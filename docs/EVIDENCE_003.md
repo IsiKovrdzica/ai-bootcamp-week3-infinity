@@ -1,19 +1,23 @@
 # BrickPulse Week 3 Evidence
 
-**Evidence status:** BASELINE DEVELOPMENT, FORMAL E1–E4 PASS RESULTS, AND FORMAL E5 BASELINE FAILURE RECORDED
+**Evidence status:** CONTROLLED EXPERIMENT COMPLETED; HOLDOUT SEALED / NOT RUN
 
-This document records completed baseline-development evidence, the separately executed evaluator-owned E1–E4 formal PASS results, and the genuine E5 baseline failure. The controlled change, post-change evaluation, and independent holdout evaluation have not run. The earlier development checks remain separate from the formal results.
+This document records the completed baseline development, formal E1–E4 baseline PASS results, genuine E5 baseline failure, focused RED→GREEN sequence, one controlled production change, unchanged same-eval E5 PASS, and final E1–E5 formal regression PASS. The independent holdout remains sealed and has not run. Development checks remain separate from formal results.
 
 ## Initial claim
 
-**Claim:** The frozen Week 3 baseline passed its focused development checks and formal evaluations E1–E4, but failed the separately frozen E5 frame-gap boundary evaluation.
+**Claim:** The frozen baseline passed E1–E4 and failed E5. After one controlled deterministic-substepping change, the unchanged E5 passed and the complete E1–E5 formal regression passed 5/5, supporting the frozen hypothesis for this project and evaluated scenario.
 
 ## Baseline identity
 
 - **Baseline prompt/version:** `docs/BUILD_PROMPT_V1.md`
 - **Context manifest/version:** `docs/CONTEXT_MANIFEST.md`
 - **Phase 1 checkpoint:** `e2e6d74 Phase 1: freeze Week 3 specification and context`
-- **Baseline commit:** `a5c492521d5d933fa05d9e5eddb96b736ace2aa2`
+- **Baseline commit:** `a5c4925 Baseline: first playable BrickPulse version`
+- **Pre-E5 checkpoint:** `1075073 Evaluation: record E1-E4 and freeze E5`
+- **E5 failure/hypothesis checkpoint:** `005331a Evaluation: record E5 failure and freeze hypothesis`
+- **RED regression checkpoint:** `0b9397d TDD: preserve RED regression for E5 frame-gap collision`
+- **Controlled-change checkpoint:** `35f6e33 Controlled change: add deterministic simulation sub-stepping`
 - **Baseline status:** Completed and frozen
 - **Baseline frozen before formal evaluation:** Yes
 
@@ -40,7 +44,7 @@ E1–E4 passed as 4 formal tests in 1 test file. E5 was later run by name and ge
 - **Likely problem layer:** Pure game simulation time integration in `src/game.ts`. `updateGame` advances the ball once using the full external `deltaSeconds`, then performs brick detection against the resulting ball position. `resolveBrick` requires `circleIntersectsRectangle` to succeed at that sampled position. Its reconstructed previous position is used only to select horizontal versus vertical response after an overlap has already been found, not to detect a collision along the traveled path.
 - **Alternative explanation considered:** A malformed or interfering evaluator fixture. The E5 preconditions proved that the ball began immediately above the target and that its projected post-update position lay beyond the target; unrelated bricks were isolated and none changed.
 - **Hypothesis:** If a large external update is processed as several small deterministic internal simulation steps while preserving the full elapsed time, the existing brick collision logic should observe the target during one internal step. E5 should then pass without changing gameplay rules, the configuration contract, rendering, input, or the formal evaluator expectation.
-- **Result that would disprove the hypothesis:** After implementing only the approved internal sub-stepping, the focused regression or unchanged formal E5 still skips the target, or required existing behavior regresses. The hypothesis is not yet proven.
+- **Result:** The hypothesis is supported for this project and evaluated scenario: the focused regression became GREEN, unchanged E5 became PASS, and E1–E5 passed 5/5. This does not establish a universal collision or physics solution.
 
 ## Frozen variables
 
@@ -52,10 +56,10 @@ E1–E4 passed as 4 formal tests in 1 test file. E5 was later run by name and ge
 
 ## One controlled change
 
-- **Change:** Proposed, not implemented: add deterministic internal simulation sub-stepping with a maximum internal step of `1/60` second. Divide each larger external delta into `ceil(deltaSeconds / (1/60))` equal steps so their sum preserves the full external elapsed time, and run the existing movement and collision sequence for each internal step.
-- **Files intentionally changed:** Planned `src/game.test.ts` for one focused regression test, then `src/game.ts` for the single controlled implementation change; no other file is authorized yet.
+- **Change:** Implemented deterministic internal simulation sub-stepping with a maximum internal step of `1/60` second. Larger external deltas are divided into equal internal steps whose sum preserves the full elapsed time, using the existing movement and collision sequence for each step.
+- **Files intentionally changed:** `src/game.test.ts` for the focused regression and test-oracle correction; `src/game.ts` for the single controlled production change.
 - **Reason this is the smallest coherent change:** At the maximum valid speed of 450 px/s, a `1/60`-second step moves the ball at most 7.5 px. For this project, that is smaller than the 14 px ball diameter and the 20 px smallest brick dimension, so the direct E5 crossing will contain sampled overlap while retaining the existing collision logic. This is a project-specific discrete-step bound, not a universal physics solution.
-- **Status:** NOT RUN
+- **Status:** COMPLETE
 
 ## Same formal evaluation before and after
 
@@ -63,9 +67,9 @@ E1–E4 passed as 4 formal tests in 1 test file. E5 was later run by name and ge
 |---|---|---|
 | Scenario ID | E5 | E5 |
 | Expected behavior | Frozen E5 expectation in `docs/EVALS.md` | Same unchanged expectation |
-| Actual behavior | Target skipped; score 0; vertical direction unchanged; no unrelated brick changed | NOT RUN |
-| Status | FAIL | NOT RUN |
-| Evidence reference | `npm test -- evals/week3-formal.test.ts -t "E5"` | NOT RUN |
+| Actual behavior | Target skipped; score 0; vertical direction unchanged; no unrelated brick changed | Target removed; score 10; vertical direction reversed upward; no unrelated brick changed |
+| Status | FAIL | PASS |
+| Evidence reference | `npm test -- evals/week3-formal.test.ts -t "E5"` | Same unchanged evaluator and command; 1 test passed and 4 nonmatching tests were skipped |
 
 ## RED, GREEN, and regression evidence
 
@@ -79,17 +83,17 @@ E1–E4 passed as 4 formal tests in 1 test file. E5 was later run by name and ge
 - **Minimal correction:** The brick resolver was made to return the win transition explicitly; no gameplay requirement was changed.
 - **Regression result:** Final `npm test` passed 33/33 tests across three test files; final typecheck and build passed.
 
-### Planned controlled-change verification
+### Completed controlled-change verification
 
-1. Add one focused `src/game.test.ts` regression using the E5-valid maximum-speed configuration, a `RUNNING` state, one isolated live target, a direct vertical path from immediately above the target, and one `0.10`-second update. Expect only the target to be removed, score to become 10, vertical direction to reverse, and unrelated bricks not to change.
-2. Run that focused test against the unchanged implementation and preserve the expected RED caused by the skipped target.
-3. Implement only the approved deterministic internal sub-stepping in `src/game.ts`.
-4. Rerun the focused regression to GREEN.
-5. Run the existing 33 development tests.
-6. Run `npm run typecheck`.
-7. Run `npm run build`.
-8. Rerun the same formal E5 command and expectation unchanged.
-9. Later rerun E1–E4 as formal regression evaluations.
+1. Added one focused `src/game.test.ts` regression derived from E5 and preserved RED against the unchanged implementation at checkpoint `0b9397d`.
+2. Implemented only deterministic internal simulation sub-stepping with maximum step `1/60` in `src/game.ts`.
+3. Reran the focused regression to GREEN.
+4. Corrected the older paddle test oracle: its exact final-Y assertion was replaced by a semantic non-penetration assertion because sub-stepping correctly consumes the remaining elapsed time after reflection. This was a test-oracle correction, not a second gameplay implementation change.
+5. Ran the development suite: 34/34 tests passed.
+6. Ran `npm run typecheck`: PASS.
+7. Ran `npm run build`: PASS.
+8. Reran the same unchanged formal E5 evaluator: PASS.
+9. Ran the complete E1–E5 formal regression: 5/5 PASS.
 
 ## Actual commands and results
 
@@ -106,6 +110,12 @@ E1–E4 passed as 4 formal tests in 1 test file. E5 was later run by name and ge
 | `npm run preview` | Production preview script | Available but NOT RUN |
 | `npm test -- evals/week3-formal.test.ts` | Run only the evaluator-owned formal E1–E4 baseline harness | PASS; 1 test file passed and 4 tests passed |
 | `npm test -- evals/week3-formal.test.ts -t "E5"` | Run only the frozen E5 baseline evaluation | FAIL; target remained alive, score remained 0, vertical direction remained downward; 1 test failed and 4 nonmatching tests were skipped |
+| Focused E5-derived regression | Preserve RED before the production change, then verify GREEN afterward | RED before implementation; GREEN after deterministic sub-stepping |
+| `npm test` | Post-change development regression suite | PASS; 34/34 tests passed |
+| `npm run typecheck` | Post-change TypeScript verification | PASS |
+| `npm run build` | Post-change production build verification | PASS |
+| `npm test -- evals/week3-formal.test.ts -t "E5"` | Official unchanged E5 same-eval post-change rerun | PASS; 1 test passed and 4 nonmatching tests were skipped |
+| `npm test -- evals/week3-formal.test.ts` | Official post-change E1–E5 formal regression | PASS; 1 test file passed and 5/5 tests passed |
 
 ## Manual verification
 
@@ -127,7 +137,7 @@ E1–E4 passed as 4 formal tests in 1 test file. E5 was later run by name and ge
 - **Reviewed files:** Baseline application, focused tests, package manifest, and generated build output were reviewed at baseline handoff.
 - **Unexpected files or generated output:** None reported; `dist/` and `node_modules/` were generated and ignored.
 - **Out-of-scope functionality found:** None reported during baseline development review.
-- **Review status:** Baseline development, formal E1–E4, and E5 baseline-failure review completed; controlled-change and final review NOT RUN
+- **Review status:** Controlled experiment and post-change formal regression reviewed; independent holdout and final review NOT RUN
 
 ## Known limitation
 
@@ -145,6 +155,6 @@ If completed individually, record that fact instead of inventing a second contri
 ## Final review decision
 
 - **Decision:** NOT RUN
-- **What the evidence proves:** The baseline completed its recorded development checks and passed formal E1–E4, while E5 exposed a reproducible skipped brick collision at the frozen frame-gap boundary.
-- **What the evidence does not prove:** The internal-substepping hypothesis is not yet proven; the controlled change, post-change E5, E1–E4 formal regression, and independent holdout remain NOT RUN.
-- **Next smallest step:** After separate authorization, add the single focused regression test and preserve RED before modifying `src/game.ts`.
+- **What the evidence proves:** The baseline passed E1–E4 and failed E5; after the single controlled production change, the focused regression became GREEN, unchanged E5 passed, and E1–E5 passed 5/5. This supports the frozen hypothesis for this project and scenario.
+- **What the evidence does not prove:** It does not establish a universal collision or physics solution, and H1 remains sealed / NOT RUN.
+- **Next smallest step:** Create the approved evidence checkpoint, then wait for separate authorization before revealing or executing H1.

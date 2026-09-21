@@ -17,6 +17,12 @@
 - **Command:** `npm test -- evals/week3-formal.test.ts`
 - **Summary:** 1 test file passed; 4 tests passed
 
+## Formal post-change execution evidence
+
+- **Controlled-change commit:** `35f6e33bcc7223bfdbcf7674585b8e439d8f5ec6`
+- **Command:** `npm test -- evals/week3-formal.test.ts`
+- **Summary:** 5 tests passed; 0 failed
+
 ## E1 — Normal start
 
 **Scenario:** Load the valid default configuration and press Space from `READY`.
@@ -31,7 +37,8 @@
 
 **Baseline result:** PASS
 **Observed:** `READY` changed to `RUNNING`; velocity was nonzero; the ball position changed after `1/60` second; score remained `0`; lives remained `3`; and 32 bricks remained.
-**Post-change result:** NOT RUN  
+**Post-change result:** PASS
+**Post-change observed:** Behavior remained consistent with the frozen expectation: `READY` changed to `RUNNING`, the ball moved, score remained `0`, lives remained `3`, and 32 bricks remained.
 **Status:** PASS
 
 ## E2 — Paddle boundary
@@ -45,7 +52,8 @@
 
 **Baseline result:** PASS
 **Observed:** The paddle remained fully in bounds at both horizontal boundaries, and continued movement toward each boundary did not move it beyond the field.
-**Post-change result:** NOT RUN  
+**Post-change result:** PASS
+**Post-change observed:** The paddle remained fully in bounds at both horizontal boundaries under continued movement toward each boundary.
 **Status:** PASS
 
 ## E3 — Invalid or incomplete configuration
@@ -65,7 +73,8 @@
 
 **Baseline result:** PASS
 **Observed:** All four frozen invalid variants were rejected by `validateGameConfig`; `createGame` also rejected them; no playable state was created; and no coercion occurred.
-**Post-change result:** NOT RUN  
+**Post-change result:** PASS
+**Post-change observed:** All four invalid configuration variants remained rejected without coercion or creation of playable state.
 **Status:** PASS
 
 ## E4 — Brick side collision
@@ -83,7 +92,8 @@
 
 **Baseline result:** PASS
 **Observed:** Exactly the selected brick was removed; the alive count decreased by one; score increased exactly once by 10; horizontal velocity reversed direction; and the removed brick did not score again.
-**Post-change result:** NOT RUN  
+**Post-change result:** PASS
+**Post-change observed:** Exactly one target brick was removed, score increased once by 10, horizontal direction reversed, and no double scoring occurred.
 **Status:** PASS
 
 If E1–E4 all pass in the real baseline, preserve every PASS result. Define another boundary expectation before executing that new case; never manufacture or retroactively redefine a failure.
@@ -129,8 +139,9 @@ The implementation technique, if a later correction is authorized, must remain a
 **Observed:** The ball center moved from Y `56` to Y `101` during the single `0.10`-second update. Its vertical direction remained downward, the target remained alive, the alive-brick count remained `1`, score remained `0`, and no unrelated brick changed.
 **Baseline command:** `npm test -- evals/week3-formal.test.ts -t "E5"`
 **Baseline output summary:** 1 test file failed; E5 failed; 4 nonmatching formal tests were skipped.
-**Post-change result:** NOT RUN
-**Status:** FAIL
+**Post-change result:** PASS
+**Post-change observed:** The isolated target was detected and removed, score became `10`, vertical velocity reversed upward, and no unrelated brick changed.
+**Status:** PASS
 
 ## H1 — SEALED HOLDOUT
 
