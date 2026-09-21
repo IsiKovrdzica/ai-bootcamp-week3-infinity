@@ -113,6 +113,56 @@ describe('BrickPulse Week 3 formal baseline evaluations', () => {
       initialAliveCount - 1,
     )
   })
+
+  it('E5 - detects a frame-gap brick crossing at maximum valid ball speed', () => {
+    const creation = createGame({
+      lives: 3,
+      paddleSpeed: 360,
+      ballSpeed: 450,
+    })
+    expect(creation.ok).toBe(true)
+    if (!creation.ok) return
+
+    const state = creation.state
+    updateGame(state, { move: 0, start: true }, 0)
+    expect(state.status).toBe('RUNNING')
+
+    const target = state.bricks[0]
+    const unrelatedBricks = state.bricks.slice(1)
+    unrelatedBricks.forEach((brick) => {
+      brick.alive = false
+    })
+    const unrelatedBefore = unrelatedBricks.map((brick) => brick.alive)
+
+    state.ball.x = target.x + target.width / 2
+    state.ball.y = target.y - state.ball.radius - 1
+    state.ball.vx = 0
+    state.ball.vy = 450
+
+    const projectedY = state.ball.y + state.ball.vy * 0.1
+    expect(state.ball.y + state.ball.radius).toBeLessThan(target.y)
+    expect(projectedY - state.ball.radius).toBeGreaterThan(
+      target.y + target.height,
+    )
+
+    updateGame(state, { move: 0, start: false }, 0.1)
+
+    expect({
+      targetAlive: target.alive,
+      aliveCount: state.bricks.filter((brick) => brick.alive).length,
+      score: state.score,
+      verticalDirection: Math.sign(state.ball.vy),
+      unrelatedBrickChanged: unrelatedBricks.some(
+        (brick, index) => brick.alive !== unrelatedBefore[index],
+      ),
+    }).toEqual({
+      targetAlive: false,
+      aliveCount: 0,
+      score: 10,
+      verticalDirection: -1,
+      unrelatedBrickChanged: false,
+    })
+  })
 })
 
 function createReadyState() {

@@ -125,9 +125,12 @@ It does NOT prescribe:
 
 The implementation technique, if a later correction is authorized, must remain a separate decision.
 
-**Baseline result:** NOT RUN
+**Baseline result:** FAIL
+**Observed:** The ball center moved from Y `56` to Y `101` during the single `0.10`-second update. Its vertical direction remained downward, the target remained alive, the alive-brick count remained `1`, score remained `0`, and no unrelated brick changed.
+**Baseline command:** `npm test -- evals/week3-formal.test.ts -t "E5"`
+**Baseline output summary:** 1 test file failed; E5 failed; 4 nonmatching formal tests were skipped.
 **Post-change result:** NOT RUN
-**Status:** NOT RUN
+**Status:** FAIL
 
 ## H1 — SEALED HOLDOUT
 
