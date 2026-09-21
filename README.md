@@ -21,7 +21,7 @@ npm run preview
 ## Verification commands
 
 - `npm test` runs Vitest's discovered suite, including evaluator files present in the workspace.
-- `npm run smoke` starts the Vite development server and checks the served BrickPulse HTML entrypoint.
+- `npm run smoke` starts a temporary Vite development server and checks the served BrickPulse HTML entrypoint.
 - `npm run typecheck` runs TypeScript checking without emitting files.
 - `npm run build` runs TypeScript checking and creates the Vite production build.
 - `npm run dev` starts the Vite development server.
@@ -41,7 +41,7 @@ npm test -- evals/week3-formal.test.ts
 npm test -- evals/week3-holdout.test.ts
 ```
 
-The automated smoke command checks server delivery and required page markers. The Canvas rendering and keyboard interaction check remains manual and is documented in `docs/BROWSER_SMOKE_TEST.md`.
+The automated smoke command checks server delivery and required page markers. Its URL is only the temporary automation target: the smoke server stops when the command finishes, so the printed URL is not intended for opening the game afterward. Use `npm run dev` and its printed URL for manual play. The Canvas rendering and keyboard interaction check remains manual and is documented in `docs/BROWSER_SMOKE_TEST.md`.
 
 ## Project documentation
 

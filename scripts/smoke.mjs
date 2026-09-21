@@ -34,7 +34,8 @@ const checks = [
   )],
 ]
 
-console.log(`Smoke target: ${baseUrl}`)
+console.log(`Temporary smoke target: ${baseUrl}`)
+console.log('This server is used only for automated checks and will stop when the command finishes.')
 let failures = 0
 
 try {
@@ -70,6 +71,8 @@ if (failures > 0) {
 } else {
   console.log(`Smoke passed: ${checks.length}/${checks.length} checks passed.`)
 }
+
+console.log('Temporary smoke server stopped. Run `npm run dev` to open the game manually.')
 
 async function waitForServer() {
   for (let attempt = 0; attempt < 30; attempt += 1) {

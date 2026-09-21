@@ -8,7 +8,7 @@ The browser interaction check below is manual, not an automated browser test. Th
 npm run smoke
 ```
 
-That command starts Vite on port 4173, requests the served page, and verifies the BrickPulse title, 640x480 Canvas, and module entrypoint. It does not simulate keyboard input or replace the manual Canvas check.
+That command starts a temporary Vite server on port 4173, requests the served page, and verifies the BrickPulse title, 640x480 Canvas, and module entrypoint. The server stops when the smoke command finishes, so its printed URL is an automation target and will not remain available for opening the game afterward. Use `npm run dev` and its printed URL for manual play. The smoke command does not simulate keyboard input or replace the manual Canvas check.
 
 ## Reproduce
 
