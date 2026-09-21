@@ -133,6 +133,38 @@ describe('collisions and scoring', () => {
     expect(state.score).toBe(10)
     expect(state.ball.vx).toBe(-100)
   })
+
+  it('detects an isolated brick crossed during a large update', () => {
+    const result = createGame({
+      lives: 3,
+      paddleSpeed: 360,
+      ballSpeed: 450,
+    })
+    if (!result.ok) throw new Error(result.error)
+
+    const state = result.state
+    updateGame(state, { move: 0, start: true }, 0)
+
+    const target = state.bricks[0]
+    state.bricks.forEach((brick) => {
+      brick.alive = false
+    })
+    target.alive = true
+
+    const unrelatedBricks = state.bricks.slice(1)
+    state.ball.x = target.x + target.width / 2
+    state.ball.y = target.y - BALL_RADIUS - 1
+    state.ball.vx = 0
+    state.ball.vy = 450
+
+    updateGame(state, idleInput, 0.1)
+
+    expect(target.alive).toBe(false)
+    expect(state.bricks.filter((brick) => brick.alive)).toHaveLength(0)
+    expect(state.score).toBe(10)
+    expect(state.ball.vy).toBeLessThan(0)
+    expect(unrelatedBricks.every((brick) => !brick.alive)).toBe(true)
+  })
 })
 
 describe('life and terminal transitions', () => {
