@@ -97,7 +97,7 @@ describe('collisions and scoring', () => {
 
     updateGame(state, idleInput, 0.02)
 
-    expect(state.ball.y).toBe(state.paddle.y - BALL_RADIUS)
+    expect(state.ball.y + state.ball.radius).toBeLessThanOrEqual(state.paddle.y)
     expect(state.ball.vy).toBe(-100)
   })
 

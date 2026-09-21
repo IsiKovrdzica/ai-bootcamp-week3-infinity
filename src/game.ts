@@ -16,6 +16,7 @@ const BRICK_GAP_X = 6
 const BRICK_GAP_Y = 8
 const BRICK_START_X = 43
 const BRICK_START_Y = 64
+const MAX_SIMULATION_STEP = 1 / 60
 
 export type GameStatus = 'READY' | 'RUNNING' | 'WON' | 'GAME_OVER'
 
@@ -81,21 +82,31 @@ export function updateGame(
     return
   }
 
-  movePaddle(state, input.move, deltaSeconds)
-
   if (state.status === 'READY') {
+    movePaddle(state, input.move, deltaSeconds)
     attachBallToPaddle(state)
     if (input.start) launchBall(state)
     return
   }
 
-  moveBall(state, deltaSeconds)
-  resolveWalls(state.ball)
-  resolvePaddle(state)
-  if (resolveBrick(state, deltaSeconds)) return
+  const stepCount =
+    deltaSeconds > MAX_SIMULATION_STEP
+      ? Math.ceil(deltaSeconds / MAX_SIMULATION_STEP)
+      : 1
+  const stepDelta = deltaSeconds / stepCount
 
-  if (state.ball.y - state.ball.radius >= FIELD_HEIGHT) {
-    loseLife(state)
+  for (let step = 0; step < stepCount; step += 1) {
+    movePaddle(state, input.move, stepDelta)
+    moveBall(state, stepDelta)
+    resolveWalls(state.ball)
+    resolvePaddle(state)
+    if (resolveBrick(state, stepDelta)) return
+
+    if (state.ball.y - state.ball.radius >= FIELD_HEIGHT) {
+      loseLife(state)
+    }
+
+    if (state.status !== 'RUNNING') return
   }
 }
 
