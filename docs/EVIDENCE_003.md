@@ -1,12 +1,12 @@
 # BrickPulse Week 3 Evidence
 
-**Evidence status:** CONTROLLED EXPERIMENT COMPLETED; HOLDOUT SEALED / NOT RUN
+**Evidence status:** WEEK 3 CONTROLLED EXPERIMENT AND INDEPENDENT HOLDOUT COMPLETED
 
-This document records the completed baseline development, formal E1–E4 baseline PASS results, genuine E5 baseline failure, focused RED→GREEN sequence, one controlled production change, unchanged same-eval E5 PASS, and final E1–E5 formal regression PASS. The independent holdout remains sealed and has not run. Development checks remain separate from formal results.
+This document records the completed baseline development, formal E1–E4 baseline PASS results, genuine E5 baseline failure, focused RED→GREEN sequence, one controlled production change, unchanged same-eval E5 PASS, final E1–E5 formal regression PASS, and the first and only independent H1 holdout execution. Development checks remain separate from formal and holdout results.
 
 ## Initial claim
 
-**Claim:** The frozen baseline passed E1–E4 and failed E5. After one controlled deterministic-substepping change, the unchanged E5 passed and the complete E1–E5 formal regression passed 5/5, supporting the frozen hypothesis for this project and evaluated scenario.
+**Claim:** The frozen baseline passed E1–E4 and failed E5. After one controlled deterministic-substepping change, the unchanged E5 passed, the complete E1–E5 formal regression passed 5/5, and the independently withheld H1 passed on its first and only execution. This supports the frozen hypothesis for this project and evaluated scenario.
 
 ## Baseline identity
 
@@ -18,6 +18,7 @@ This document records the completed baseline development, formal E1–E4 baselin
 - **E5 failure/hypothesis checkpoint:** `005331a Evaluation: record E5 failure and freeze hypothesis`
 - **RED regression checkpoint:** `0b9397d TDD: preserve RED regression for E5 frame-gap collision`
 - **Controlled-change checkpoint:** `35f6e33 Controlled change: add deterministic simulation sub-stepping`
+- **Pre-holdout evidence checkpoint:** `23dda9f Evaluation: record controlled-change results before holdout`
 - **Baseline status:** Completed and frozen
 - **Baseline frozen before formal evaluation:** Yes
 
@@ -117,6 +118,17 @@ E1–E4 passed as 4 formal tests in 1 test file. E5 was later run by name and ge
 | `npm test -- evals/week3-formal.test.ts -t "E5"` | Official unchanged E5 same-eval post-change rerun | PASS; 1 test passed and 4 nonmatching tests were skipped |
 | `npm test -- evals/week3-formal.test.ts` | Official post-change E1–E5 formal regression | PASS; 1 test file passed and 5/5 tests passed |
 
+## Final scoped verification
+
+| Command | Actual result |
+|---|---|
+| `npm test -- src/config.test.ts src/game.test.ts src/input.test.ts` | PASS; 3 test files passed and 34/34 development tests passed |
+| `npm test -- evals/week3-formal.test.ts` | PASS; 1 test file passed and 5/5 formal tests passed |
+| `npm run typecheck` | PASS; `tsc --noEmit` completed successfully |
+| `npm run build` | PASS; TypeScript checking and Vite production build completed, with 8 modules transformed |
+
+The holdout command was intentionally not rerun during final verification.
+
 ## Manual verification
 
 - **Steps:** The human evaluator loaded the running BrickPulse application and performed a manual baseline browser smoke check using the documented controls and normal gameplay.
@@ -125,12 +137,14 @@ E1–E4 passed as 4 formal tests in 1 test file. E5 was later run by name and ge
 
 ## Independent evaluation
 
-- **Reveal occurred only after controlled change:** NOT RUN / TO BE RECORDED
-- **Scenario supplied by human evaluator:** NOT RUN / TO BE RECORDED
-- **Expected result:** TO BE RECORDED
-- **Actual result:** NOT RUN
-- **Status:** NOT RUN
-- **Effect on conclusions:** NOT RUN / TO BE RECORDED
+- **Reveal occurred only after controlled change:** Yes; H1 remained unavailable through checkpoint `23dda9f`.
+- **Scenario supplied by human evaluator:** With exactly one life remaining, miss the paddle and cross the bottom boundary; verify `GAME_OVER`, terminal stability, and a complete fresh restart with Space.
+- **Expected result:** `GAME_OVER`; stopped ball movement; unchanged score/bricks after terminal entry; Space restores `READY`, 3 lives, score 0, all 32 bricks, and initial paddle/ball positions.
+- **Actual result:** PASS on the first and only execution. The miss produced `GAME_OVER`; the ball stayed at x 7/y 488 during an additional idle update; score stayed 0; all 32 bricks stayed unchanged; Space restored `READY`, 3 lives, score 0, 32/32 live bricks, paddle x 272/y 440, and ball x 320/y 431 matching a fresh default reference.
+- **Command:** `npm test -- evals/week3-holdout.test.ts`
+- **Result summary:** 1 test file passed; 1 test passed.
+- **Status:** PASS
+- **Effect on conclusions:** H1 independently supports the implemented final-life, terminal-stability, and fresh-restart behavior. It was not used for tuning, was not rerun, and no implementation change followed it.
 
 ## Diff review
 
@@ -141,20 +155,19 @@ E1–E4 passed as 4 formal tests in 1 test file. E5 was later run by name and ge
 
 ## Known limitation
 
-**Limitation:** Collision handling is intentionally simple and discrete. It does not include continuous collision detection, swept collision systems, advanced tunneling prevention, or complex corner-resolution heuristics. npm reported two moderate dependency audit findings; no dependency-changing audit fix was attempted during the frozen baseline.
+- Collision handling remains simple and discretely sub-stepped; it does not claim continuous or swept collision detection or general-purpose physics correctness.
+- The evidence supports the evaluated BrickPulse scenarios, not every possible frame rate or geometry.
+- `npm install` previously reported two moderate dependency audit findings; no dependency-changing audit fix was applied.
 
 ## Contributions
 
-| Contributor | Contribution | Personally verified result |
-|---|---|---|
-| Human project owner | Approved the frozen specification/context, implementation plan and assumptions, baseline implementation, and documentation-only synchronization; subsequently performed the manual browser interaction smoke check | Application load, Space start, Arrow and A/D paddle movement, brick removal, scoring, life reduction from 3 to 2, and return to `READY` after a non-final miss were manually verified as baseline behavior |
-| Codex | Created the minimal scaffold and BrickPulse implementation, wrote and ran focused development tests, performed type/build verification, conducted the available visual smoke check, and later ran the evaluator-owned E1–E4 harness in a fresh evaluator conversation | 33/33 focused development tests, typecheck, production build, local visual render, and 4/4 formal E1–E4 tests completed |
+This project was completed collaboratively by both team members throughout the full Week 3 workflow: the project owner and Mateja Miletić (`mmiletic5`). Both participated in scope and specification decisions, prompt/context design, implementation review, TDD and test review, formal evaluation design and interpretation, diagnosis of the E5 baseline failure, selection and review of the controlled change, holdout review, and final evidence review. Major technical and methodological decisions were discussed and agreed jointly rather than divided into isolated subsystems.
 
-If completed individually, record that fact instead of inventing a second contributor.
+Codex assisted with the recorded scaffold, implementation, tests, evaluator harnesses, controlled change, verification commands, and evidence updates under the team's joint review. The factual outcomes remain those recorded in this evidence: baseline 33/33 development tests, post-change 34/34, typecheck/build PASS, E1–E5 5/5 PASS after the controlled change, and H1 1/1 PASS on its first and only execution.
 
 ## Final review decision
 
-- **Decision:** NOT RUN
-- **What the evidence proves:** The baseline passed E1–E4 and failed E5; after the single controlled production change, the focused regression became GREEN, unchanged E5 passed, and E1–E5 passed 5/5. This supports the frozen hypothesis for this project and scenario.
-- **What the evidence does not prove:** It does not establish a universal collision or physics solution, and H1 remains sealed / NOT RUN.
-- **Next smallest step:** Create the approved evidence checkpoint, then wait for separate authorization before revealing or executing H1.
+- **Decision:** Week 3 evidence and scoped final verification complete; ready for final human review.
+- **What the evidence proves:** The baseline passed E1–E4 and failed E5; after the single controlled production change, the focused regression became GREEN, unchanged E5 passed, E1–E5 passed 5/5, and independently withheld H1 passed once. This supports the frozen hypothesis and specified game behavior for the evaluated project scenarios.
+- **What the evidence does not prove:** It does not establish a universal collision or physics solution or behavior beyond the recorded scenarios.
+- **Next smallest step:** After human approval, checkpoint the final evidence and holdout harness without further evaluation execution.

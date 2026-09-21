@@ -143,8 +143,41 @@ The implementation technique, if a later correction is authorized, must remain a
 **Post-change observed:** The isolated target was detected and removed, score became `10`, vertical velocity reversed upward, and no unrelated brick changed.
 **Status:** PASS
 
-## H1 — SEALED HOLDOUT
+## H1 — Independent Holdout
 
-**Status:** SEALED / NOT RUN
+**Holdout discipline:** Defined before baseline implementation and withheld until after baseline completion, E1–E5 evaluation, the single controlled change, post-change formal regression, and checkpoint `23dda9f`.
 
-The full scenario and expectation were defined before baseline implementation and are held externally by the human evaluator. They will be revealed only after the controlled change is complete.
+**Scenario:**
+
+- The game has exactly one life remaining.
+- The ball misses the paddle and crosses the bottom boundary.
+
+**Frozen expected result:**
+
+1. Game state becomes `GAME_OVER`.
+2. Ball movement stops.
+3. Score and brick state do not change after `GAME_OVER`.
+4. Space performs a complete fresh restart.
+5. The restarted game has:
+   - lives = `3`;
+   - score = `0`;
+   - a complete 4×8 brick grid;
+   - the initial paddle position;
+   - the initial ball position;
+   - state = `READY`.
+
+**Actual result:** PASS
+
+**Observed after the final miss:** Status was `GAME_OVER`; ball position was x = `7`, y = `488`; score was `0`; and all 32 bricks were unchanged.
+
+**Observed after an additional idle update:** Status remained `GAME_OVER`; the ball remained at x = `7`, y = `488`; score remained `0`; and brick state remained unchanged.
+
+**Observed after Space restart:** State was `READY`; lives were `3`; score was `0`; 32/32 bricks were alive; paddle position was x = `272`, y = `440`; and ball position was x = `320`, y = `431`. The positions matched a separately created fresh `DEFAULT_CONFIG` state.
+
+**Command:** `npm test -- evals/week3-holdout.test.ts`
+
+**Result summary:** 1 test file passed; 1 test passed.
+
+**Execution count:** H1 was executed once. It was not used for tuning, and no implementation change followed the holdout.
+
+**Status:** PASS
