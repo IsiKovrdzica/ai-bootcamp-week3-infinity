@@ -2,11 +2,11 @@
 
 **Evidence status:** WEEK 3 CONTROLLED EXPERIMENT, INDEPENDENT HOLDOUT, AND FINAL REVIEW COMPLETED
 
-This document records the completed baseline development, formal E1–E4 baseline PASS results, genuine E5 baseline failure, focused RED→GREEN sequence, one controlled production change, unchanged same-eval E5 PASS, final E1–E5 formal regression PASS, and the first and only independent H1 holdout execution. Development checks remain separate from formal and holdout results.
+This document records the completed baseline development, formal E1–E4 baseline PASS results, genuine E5 baseline failure, focused RED→GREEN sequence, one controlled production change, unchanged same-eval E5 PASS, final E1–E5 formal regression PASS, and the independent H1 holdout result. H1 passed on its first execution, before any tuning or implementation changes; it was later rerun as part of the complete `npm test` regression, with no implementation changes based on that rerun. Development checks remain separate from formal and holdout results.
 
 ## Initial claim
 
-**Claim:** The frozen baseline passed E1–E4 and failed E5. After one controlled deterministic-substepping change, the unchanged E5 passed, the complete E1–E5 formal regression passed 5/5, and the independently withheld H1 passed on its first and only execution. This supports the frozen hypothesis for this project and evaluated scenario.
+**Claim:** The frozen baseline passed E1–E4 and failed E5. After one controlled deterministic-substepping change, the unchanged E5 passed, the complete E1–E5 formal regression passed 5/5, and the independently withheld H1 passed on its first execution before any tuning or implementation changes. H1 was later included in the complete `npm test` regression without any implementation change based on that rerun. This supports the frozen hypothesis for this project and evaluated scenario.
 
 ## Baseline identity
 
@@ -82,7 +82,7 @@ E1–E4 passed as 4 formal tests in 1 test file. E5 was later run by name and ge
 - **Input GREEN:** The same focused command passed 7/7 tests after control mapping and input handling were implemented.
 - **Integrated development issue:** The first `npm run typecheck` and `npm run build` failed with TypeScript TS2367 because control-flow analysis did not infer that brick resolution could change the status to `WON`.
 - **Minimal correction:** The brick resolver was made to return the win transition explicitly; no gameplay requirement was changed.
-- **Regression result:** Final `npm test` passed 33/33 tests across three test files; final typecheck and build passed.
+- **Historical regression result:** The baseline `npm test` passed 33/33 tests across three development test files; final typecheck and build passed.
 
 ### Completed controlled-change verification
 
@@ -90,7 +90,7 @@ E1–E4 passed as 4 formal tests in 1 test file. E5 was later run by name and ge
 2. Implemented only deterministic internal simulation sub-stepping with maximum step `1/60` in `src/game.ts`.
 3. Reran the focused regression to GREEN.
 4. Corrected the older paddle test oracle: its exact final-Y assertion was replaced by a semantic non-penetration assertion because sub-stepping correctly consumes the remaining elapsed time after reflection. This was a test-oracle correction, not a second gameplay implementation change.
-5. Ran the development suite: 34/34 tests passed.
+5. Ran the post-change development suite: 34/34 tests passed.
 6. Ran `npm run typecheck`: PASS.
 7. Ran `npm run build`: PASS.
 8. Reran the same unchanged formal E5 evaluator: PASS.
@@ -104,7 +104,7 @@ E1–E4 passed as 4 formal tests in 1 test file. E5 was later run by name and ge
 | `npm test -- --run src/config.test.ts` | Focused configuration RED/GREEN checks | Initial missing-module RED, then 14/14 passed |
 | `npm test -- --run src/game.test.ts` | Focused game-rule RED/GREEN checks | Initial missing-module RED, then 12/12 passed |
 | `npm test -- --run src/input.test.ts` | Focused input RED/GREEN checks | Initial missing-module RED, then 7/7 passed |
-| `npm test` | Full focused development regression suite | 33/33 tests passed across three files |
+| `npm test` | Historical baseline development regression suite | 33/33 tests passed across three files |
 | `npm run typecheck` | TypeScript verification | Initial TS2367 failure; passed after the minimal explicit-return correction |
 | `npm run build` | TypeScript verification and Vite production build | Initial TS2367 failure; final build passed with eight modules transformed |
 | `npm run dev -- --host 127.0.0.1` | Serve the baseline locally for the browser check | Vite served successfully at `http://127.0.0.1:5173/` |
@@ -112,7 +112,9 @@ E1–E4 passed as 4 formal tests in 1 test file. E5 was later run by name and ge
 | `npm test -- evals/week3-formal.test.ts` | Run only the evaluator-owned formal E1–E4 baseline harness | PASS; 1 test file passed and 4 tests passed |
 | `npm test -- evals/week3-formal.test.ts -t "E5"` | Run only the frozen E5 baseline evaluation | FAIL; target remained alive, score remained 0, vertical direction remained downward; 1 test failed and 4 nonmatching tests were skipped |
 | Focused E5-derived regression | Preserve RED before the production change, then verify GREEN afterward | RED before implementation; GREEN after deterministic sub-stepping |
-| `npm test` | Post-change development regression suite | PASS; 34/34 tests passed |
+| `npm test -- src/config.test.ts src/game.test.ts src/input.test.ts` | Post-change development regression suite | PASS; 34/34 tests passed |
+| `npm test` | Current checkout including formal and holdout evaluator files | PASS; 5 test files and 40/40 tests passed |
+| `npm run smoke` | Automated server and HTML entrypoint smoke check | PASS; Vite served the expected title, Canvas dimensions, and `/src/main.ts` entrypoint |
 | `npm run typecheck` | Post-change TypeScript verification | PASS |
 | `npm run build` | Post-change production build verification | PASS |
 | `npm test -- evals/week3-formal.test.ts -t "E5"` | Official unchanged E5 same-eval post-change rerun | PASS; 1 test passed and 4 nonmatching tests were skipped |
@@ -127,6 +129,8 @@ E1–E4 passed as 4 formal tests in 1 test file. E5 was later run by name and ge
 | `npm test -- evals/week3-formal.test.ts` | PASS; 1 test file passed and 5/5 formal tests passed |
 | `npm run typecheck` | PASS; `tsc --noEmit` completed successfully |
 | `npm run build` | PASS; TypeScript checking and Vite production build completed, with 8 modules transformed |
+| `npm run smoke` | PASS; automated Vite server and HTML entrypoint check completed successfully |
+| `npm audit --omit=dev` | PASS; production-only dependency audit reported 0 vulnerabilities |
 
 ## Dependency audit
 
@@ -137,15 +141,16 @@ The full `npm audit --json` result on 2026-09-21 reported:
 | `vitest` | Moderate | Vitest path traversal / arbitrary file read via `@vitest/mocker` redirect mock ([GHSA-82fw-gwwq-j7x9](https://github.com/advisories/GHSA-82fw-gwwq-j7x9), CWE-22, CVSS 5.9) | `vitest >=2.1.0-beta.1 <4.1.11` | Vitest `5.0.1`, a major-version upgrade |
 | `@vitest/mocker` (transitive from `vitest`) | Moderate | Same advisory ([GHSA-82fw-gwwq-j7x9](https://github.com/advisories/GHSA-82fw-gwwq-j7x9), CWE-22, CVSS 5.9) | `@vitest/mocker >=2.1.0 <4.1.11` | Upgrade Vitest to `5.0.1` |
 
-Audit totals were `2 moderate`, `0 low`, `0 high`, `0 critical`, and `0 info`. npm reported 102 total dependency entries; its production, development, and optional counts are overlapping metadata categories, reported as 1, 102, and 53 respectively. The findings affect the test runner and are not shipped as browser production code. They are accepted as known development risks for this frozen Week 3 baseline; no `npm audit fix --force` or major Vitest upgrade was applied because that would change the approved dependency baseline and could introduce unrelated test/tooling changes.
+Audit totals were `2 moderate`, `0 low`, `0 high`, `0 critical`, and `0 info`. npm reported 102 total dependency entries; its production, development, and optional counts are overlapping metadata categories, reported as 1, 102, and 53 respectively. The findings affect the test runner and are not shipped as browser production code. `npm audit --omit=dev` separately returned `0 vulnerabilities`, so no production dependency vulnerability was found. The two development findings are accepted as known risks for this frozen Week 3 baseline; no `npm audit fix --force` or major Vitest upgrade was applied because that would change the approved dependency baseline and could introduce unrelated test/tooling changes.
 
-The holdout command was intentionally not rerun during final verification.
+The holdout command was intentionally not rerun during the original scoped final verification; it was later included in the complete `npm test` regression.
 
 ## Manual verification
 
 - **Steps:** The human evaluator loaded the running BrickPulse application and performed a manual baseline browser smoke check using the documented controls and normal gameplay.
 - **Actual result:** The application loaded successfully; Space started the ball from `READY`; Left Arrow and Right Arrow moved the paddle; A and D also moved the paddle; bricks disappeared when hit; score increased when bricks were destroyed; intentionally missing the ball reduced lives from 3 to 2; and the game returned to `READY` after that non-final miss.
 - **Evidence:** Human-observed manual baseline verification. This smoke check is separate from the later formal evaluator-owned E1–E4 results; no formal PASS/FAIL is inferred from the smoke-check result itself.
+- **Classification:** Manual browser smoke check; not an automated browser test.
 
 ### Independent final-review smoke check
 
@@ -156,11 +161,11 @@ The reproducible steps and review record are in `docs/BROWSER_SMOKE_TEST.md`. On
 - **Reveal occurred only after controlled change:** Yes; H1 remained unavailable through checkpoint `23dda9f`.
 - **Scenario supplied by human evaluator:** With exactly one life remaining, miss the paddle and cross the bottom boundary; verify `GAME_OVER`, terminal stability, and a complete fresh restart with Space.
 - **Expected result:** `GAME_OVER`; stopped ball movement; unchanged score/bricks after terminal entry; Space restores `READY`, 3 lives, score 0, all 32 bricks, and initial paddle/ball positions.
-- **Actual result:** PASS on the first and only execution. The miss produced `GAME_OVER`; the ball stayed at x 7/y 488 during an additional idle update; score stayed 0; all 32 bricks stayed unchanged; Space restored `READY`, 3 lives, score 0, 32/32 live bricks, paddle x 272/y 440, and ball x 320/y 431 matching a fresh default reference.
+- **Actual result:** H1 passed on its first execution, before any tuning or implementation changes. The miss produced `GAME_OVER`; the ball stayed at x 7/y 488 during an additional idle update; score stayed 0; all 32 bricks stayed unchanged; Space restored `READY`, 3 lives, score 0, 32/32 live bricks, paddle x 272/y 440, and ball x 320/y 431 matching a fresh default reference. H1 was later rerun as part of the complete `npm test` regression, and no implementation changes were made based on that rerun.
 - **Command:** `npm test -- evals/week3-holdout.test.ts`
 - **Result summary:** 1 test file passed; 1 test passed.
 - **Status:** PASS
-- **Effect on conclusions:** H1 independently supports the implemented final-life, terminal-stability, and fresh-restart behavior. It was not used for tuning, was not rerun, and no implementation change followed it.
+- **Effect on conclusions:** H1 independently supports the implemented final-life, terminal-stability, and fresh-restart behavior. Its first execution was not used for tuning. The later regression rerun did not lead to any implementation change.
 
 ## Diff review
 
@@ -173,17 +178,17 @@ The reproducible steps and review record are in `docs/BROWSER_SMOKE_TEST.md`. On
 
 - Collision handling remains simple and discretely sub-stepped; it does not claim continuous or swept collision detection or general-purpose physics correctness.
 - The evidence supports the evaluated BrickPulse scenarios, not every possible frame rate or geometry.
-- `npm audit --json` on 2026-09-21 reported two moderate development-dependency findings for the Vitest / `@vitest/mocker` path-traversal advisory. They are explicitly accepted as known risks for the frozen Week 3 baseline; the available fix is the unapproved major upgrade to Vitest 5.0.1.
+- `npm audit --json` on 2026-09-21 reported two moderate development-dependency findings for the Vitest / `@vitest/mocker` path-traversal advisory. `npm audit --omit=dev` returned `0 vulnerabilities`; the development findings are explicitly accepted as known risks for the frozen Week 3 baseline. The available fix is the unapproved major upgrade to Vitest 5.0.1.
 
 ## Contributions
 
 This project was completed collaboratively by both team members throughout the full Week 3 workflow: the project owner and Mateja Miletić (`mmiletic5`). Both participated in scope and specification decisions, prompt/context design, implementation review, TDD and test review, formal evaluation design and interpretation, diagnosis of the E5 baseline failure, selection and review of the controlled change, holdout review, and final evidence review. Major technical and methodological decisions were discussed and agreed jointly rather than divided into isolated subsystems.
 
-Codex assisted with the recorded scaffold, implementation, tests, evaluator harnesses, controlled change, verification commands, and evidence updates under the team's joint review. The factual outcomes remain those recorded in this evidence: baseline 33/33 development tests, post-change 34/34, typecheck/build PASS, E1–E5 5/5 PASS after the controlled change, and H1 1/1 PASS on its first and only execution.
+Codex assisted with the recorded scaffold, implementation, tests, evaluator harnesses, controlled change, verification commands, and evidence updates under the team's joint review. The factual outcomes remain those recorded in this evidence: historical baseline 33/33 development tests, post-change 34/34 development tests, current checkout 40/40 including evaluator files, typecheck/build PASS, automated smoke PASS, E1–E5 5/5 PASS after the controlled change, and H1 1/1 PASS on its first execution before any tuning or implementation changes. H1 was later included in the complete regression without implementation changes based on that rerun.
 
 ## Final review decision
 
 - **Decision:** Week 3 evidence and scoped final review complete.
 - **What the evidence proves:** The baseline passed E1–E4 and failed E5; after the single controlled production change, the focused regression became GREEN, unchanged E5 passed, E1–E5 passed 5/5, and independently withheld H1 passed once. This supports the frozen hypothesis and specified game behavior for the evaluated project scenarios.
 - **What the evidence does not prove:** It does not establish a universal collision or physics solution or behavior beyond the recorded scenarios.
-- **Next smallest step:** Preserve this reviewed evidence package and holdout harness without rerunning the one-time holdout evaluation.
+- **Next smallest step:** Preserve this reviewed evidence package and holdout harness without making implementation changes based on later regression reruns.
