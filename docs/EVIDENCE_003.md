@@ -1,6 +1,6 @@
 # BrickPulse Week 3 Evidence
 
-**Evidence status:** WEEK 3 CONTROLLED EXPERIMENT AND INDEPENDENT HOLDOUT COMPLETED
+**Evidence status:** WEEK 3 CONTROLLED EXPERIMENT, INDEPENDENT HOLDOUT, AND FINAL REVIEW COMPLETED
 
 This document records the completed baseline development, formal E1–E4 baseline PASS results, genuine E5 baseline failure, focused RED→GREEN sequence, one controlled production change, unchanged same-eval E5 PASS, final E1–E5 formal regression PASS, and the first and only independent H1 holdout execution. Development checks remain separate from formal and holdout results.
 
@@ -117,6 +117,7 @@ E1–E4 passed as 4 formal tests in 1 test file. E5 was later run by name and ge
 | `npm run build` | Post-change production build verification | PASS |
 | `npm test -- evals/week3-formal.test.ts -t "E5"` | Official unchanged E5 same-eval post-change rerun | PASS; 1 test passed and 4 nonmatching tests were skipped |
 | `npm test -- evals/week3-formal.test.ts` | Official post-change E1–E5 formal regression | PASS; 1 test file passed and 5/5 tests passed |
+| `npm audit --json` | Inspect dependency vulnerabilities during final review | 2 moderate vulnerabilities, 0 info/low/high/critical; both are development-dependency findings involving Vitest and the same `@vitest/mocker` advisory |
 
 ## Final scoped verification
 
@@ -127,6 +128,17 @@ E1–E4 passed as 4 formal tests in 1 test file. E5 was later run by name and ge
 | `npm run typecheck` | PASS; `tsc --noEmit` completed successfully |
 | `npm run build` | PASS; TypeScript checking and Vite production build completed, with 8 modules transformed |
 
+## Dependency audit
+
+The full `npm audit --json` result on 2026-09-21 reported:
+
+| Package path | Severity | Advisory | Affected range | Fix available |
+|---|---|---|---|---|
+| `vitest` | Moderate | Vitest path traversal / arbitrary file read via `@vitest/mocker` redirect mock ([GHSA-82fw-gwwq-j7x9](https://github.com/advisories/GHSA-82fw-gwwq-j7x9), CWE-22, CVSS 5.9) | `vitest >=2.1.0-beta.1 <4.1.11` | Vitest `5.0.1`, a major-version upgrade |
+| `@vitest/mocker` (transitive from `vitest`) | Moderate | Same advisory ([GHSA-82fw-gwwq-j7x9](https://github.com/advisories/GHSA-82fw-gwwq-j7x9), CWE-22, CVSS 5.9) | `@vitest/mocker >=2.1.0 <4.1.11` | Upgrade Vitest to `5.0.1` |
+
+Audit totals were `2 moderate`, `0 low`, `0 high`, `0 critical`, and `0 info`. npm reported 102 total dependency entries; its production, development, and optional counts are overlapping metadata categories, reported as 1, 102, and 53 respectively. The findings affect the test runner and are not shipped as browser production code. They are accepted as known development risks for this frozen Week 3 baseline; no `npm audit fix --force` or major Vitest upgrade was applied because that would change the approved dependency baseline and could introduce unrelated test/tooling changes.
+
 The holdout command was intentionally not rerun during final verification.
 
 ## Manual verification
@@ -134,6 +146,10 @@ The holdout command was intentionally not rerun during final verification.
 - **Steps:** The human evaluator loaded the running BrickPulse application and performed a manual baseline browser smoke check using the documented controls and normal gameplay.
 - **Actual result:** The application loaded successfully; Space started the ball from `READY`; Left Arrow and Right Arrow moved the paddle; A and D also moved the paddle; bricks disappeared when hit; score increased when bricks were destroyed; intentionally missing the ball reduced lives from 3 to 2; and the game returned to `READY` after that non-final miss.
 - **Evidence:** Human-observed manual baseline verification. This smoke check is separate from the later formal evaluator-owned E1–E4 results; no formal PASS/FAIL is inferred from the smoke-check result itself.
+
+### Independent final-review smoke check
+
+The reproducible steps and review record are in `docs/BROWSER_SMOKE_TEST.md`. On 2026-09-21, the local app was opened at `http://127.0.0.1:5173/` after starting Vite with `npm run dev -- --host 127.0.0.1`. The initial `READY` screen rendered correctly with a 640x480 Canvas, 32 bricks, score 0, three lives, paddle, and ball. Pressing Space changed the rendered frame and started play; holding ArrowRight changed the rendered frame again. Canvas readback confirmed non-empty pixels and the expected 640x480 dimensions. **Result: PASS.**
 
 ## Independent evaluation
 
@@ -151,13 +167,13 @@ The holdout command was intentionally not rerun during final verification.
 - **Reviewed files:** Baseline application, focused tests, package manifest, and generated build output were reviewed at baseline handoff.
 - **Unexpected files or generated output:** None reported; `dist/` and `node_modules/` were generated and ignored.
 - **Out-of-scope functionality found:** None reported during baseline development review.
-- **Review status:** Controlled experiment and post-change formal regression reviewed; independent holdout and final review NOT RUN
+- **Review status:** Controlled experiment, post-change formal regression, independent holdout, dependency audit, and final review completed. No unexpected files or out-of-scope functionality were found in this documentation review.
 
 ## Known limitation
 
 - Collision handling remains simple and discretely sub-stepped; it does not claim continuous or swept collision detection or general-purpose physics correctness.
 - The evidence supports the evaluated BrickPulse scenarios, not every possible frame rate or geometry.
-- `npm install` previously reported two moderate dependency audit findings; no dependency-changing audit fix was applied.
+- `npm audit --json` on 2026-09-21 reported two moderate development-dependency findings for the Vitest / `@vitest/mocker` path-traversal advisory. They are explicitly accepted as known risks for the frozen Week 3 baseline; the available fix is the unapproved major upgrade to Vitest 5.0.1.
 
 ## Contributions
 
@@ -167,7 +183,7 @@ Codex assisted with the recorded scaffold, implementation, tests, evaluator harn
 
 ## Final review decision
 
-- **Decision:** Week 3 evidence and scoped final verification complete; ready for final human review.
+- **Decision:** Week 3 evidence and scoped final review complete.
 - **What the evidence proves:** The baseline passed E1–E4 and failed E5; after the single controlled production change, the focused regression became GREEN, unchanged E5 passed, E1–E5 passed 5/5, and independently withheld H1 passed once. This supports the frozen hypothesis and specified game behavior for the evaluated project scenarios.
 - **What the evidence does not prove:** It does not establish a universal collision or physics solution or behavior beyond the recorded scenarios.
-- **Next smallest step:** After human approval, checkpoint the final evidence and holdout harness without further evaluation execution.
+- **Next smallest step:** Preserve this reviewed evidence package and holdout harness without rerunning the one-time holdout evaluation.
