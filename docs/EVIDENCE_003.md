@@ -1,33 +1,38 @@
 # BrickPulse Week 3 Evidence
 
-**Evidence status:** BASELINE DEVELOPMENT RECORDED; FORMAL EVALUATION NOT RUN
+**Evidence status:** BASELINE DEVELOPMENT AND FORMAL E1–E4 EVALUATION RECORDED
 
-This document records completed baseline-development evidence. Formal evaluator-owned evaluation, the controlled-change experiment, and independent holdout evaluation have not run. Development checks do not imply a formal PASS.
+This document records completed baseline-development evidence and the separately executed evaluator-owned E1–E4 formal baseline evaluation. The controlled-change experiment and independent holdout evaluation have not run. The earlier development checks remain separate from the formal results.
 
 ## Initial claim
 
-**Claim:** The first coherent playable Week 3 baseline was implemented and passed its focused development checks. Formal conformance remains to be evaluated.
+**Claim:** The frozen Week 3 baseline passed its focused development checks and all four independently executed formal baseline evaluations E1–E4. Those four evaluations discovered no baseline problem.
 
 ## Baseline identity
 
 - **Baseline prompt/version:** `docs/BUILD_PROMPT_V1.md`
 - **Context manifest/version:** `docs/CONTEXT_MANIFEST.md`
 - **Phase 1 checkpoint:** `e2e6d74 Phase 1: freeze Week 3 specification and context`
+- **Baseline commit:** `a5c492521d5d933fa05d9e5eddb96b736ace2aa2`
 - **Baseline status:** Completed and frozen
-- **Baseline frozen before formal evaluation:** Yes; formal evaluation has not run
+- **Baseline frozen before formal evaluation:** Yes
 
 ## Baseline result
 
-- **Formal scenario:** NOT RUN / TO BE RECORDED
-- **Expected result:** TO BE RECORDED by the formal evaluator
-- **Actual result:** NOT RUN
-- **Evidence level:** Development evidence only; no formal PASS/FAIL
+| Scenario | Actual baseline result | Observed behavior |
+|---|---|---|
+| E1 — Normal start | PASS | `READY` changed to `RUNNING`; velocity was nonzero; position changed after `1/60` second; score was 0; lives were 3; 32 bricks remained |
+| E2 — Paddle boundary | PASS | The paddle remained fully in bounds at both horizontal boundaries and did not overrun either boundary under continued input |
+| E3 — Invalid or incomplete configuration | PASS | All four variants were rejected by `validateGameConfig` and `createGame`; no playable state was created and no coercion occurred |
+| E4 — Brick side collision | PASS | Exactly the selected brick was removed; alive count decreased by one; score increased once by 10; horizontal velocity reversed; the removed brick did not score again |
+
+The formal run passed 1 test file and 4 tests. These results do not derive from, or convert, the earlier 33 development-test passes.
 
 ## Observed signal
 
-- **Signal:** NOT RUN / TO BE RECORDED after formal evaluation
-- **Why it is a genuine baseline observation:** TO BE RECORDED after formal evaluation
-- **Relevant artifact or output:** TO BE RECORDED after formal evaluation
+- **Signal:** E1–E4 all passed; these scenarios discovered no baseline problem.
+- **Why it is a genuine baseline observation:** The evaluator-owned harness was created and executed only after the baseline was frozen, against commit `a5c492521d5d933fa05d9e5eddb96b736ace2aa2`.
+- **Relevant artifact or output:** `evals/week3-formal.test.ts`; `npm test -- evals/week3-formal.test.ts`; 1 test file passed and 4 tests passed.
 
 ## Diagnosis and hypothesis
 
@@ -38,11 +43,11 @@ This document records completed baseline-development evidence. Formal evaluator-
 
 ## Frozen variables
 
-- **Specification:** Frozen `docs/GAME_SPEC.md`; formal-experiment value to be recorded
-- **Formal scenario and expectation:** NOT RUN / TO BE RECORDED
-- **Configuration/fixture:** NOT RUN / TO BE RECORDED
-- **Commands/environment:** NOT RUN / TO BE RECORDED
-- **Other unchanged factors:** NOT RUN / TO BE RECORDED
+- **Specification:** Frozen `docs/GAME_SPEC.md`; unchanged for E1–E4
+- **Formal scenario and expectation:** Frozen E1–E4 expectations in `docs/EVALS.md`
+- **Configuration/fixture:** Deterministic evaluator-owned fixtures recorded in `evals/week3-formal.test.ts`
+- **Commands/environment:** `npm test -- evals/week3-formal.test.ts`
+- **Other unchanged factors:** Frozen baseline source, implementation tests, package files, and configuration
 
 ## One controlled change
 
@@ -86,12 +91,13 @@ This document records completed baseline-development evidence. Formal evaluator-
 | `npm run build` | TypeScript verification and Vite production build | Initial TS2367 failure; final build passed with eight modules transformed |
 | `npm run dev -- --host 127.0.0.1` | Serve the baseline locally for the browser check | Vite served successfully at `http://127.0.0.1:5173/` |
 | `npm run preview` | Production preview script | Available but NOT RUN |
+| `npm test -- evals/week3-formal.test.ts` | Run only the evaluator-owned formal E1–E4 baseline harness | PASS; 1 test file passed and 4 tests passed |
 
 ## Manual verification
 
 - **Steps:** The human evaluator loaded the running BrickPulse application and performed a manual baseline browser smoke check using the documented controls and normal gameplay.
 - **Actual result:** The application loaded successfully; Space started the ball from `READY`; Left Arrow and Right Arrow moved the paddle; A and D also moved the paddle; bricks disappeared when hit; score increased when bricks were destroyed; intentionally missing the ball reduced lives from 3 to 2; and the game returned to `READY` after that non-final miss.
-- **Evidence:** Human-observed manual baseline verification. This smoke check is separate from the formal evaluator-owned evaluation, which remains NOT RUN. No formal PASS/FAIL is inferred from the smoke-check result.
+- **Evidence:** Human-observed manual baseline verification. This smoke check is separate from the later formal evaluator-owned E1–E4 results; no formal PASS/FAIL is inferred from the smoke-check result itself.
 
 ## Independent evaluation
 
@@ -107,7 +113,7 @@ This document records completed baseline-development evidence. Formal evaluator-
 - **Reviewed files:** Baseline application, focused tests, package manifest, and generated build output were reviewed at baseline handoff.
 - **Unexpected files or generated output:** None reported; `dist/` and `node_modules/` were generated and ignored.
 - **Out-of-scope functionality found:** None reported during baseline development review.
-- **Review status:** Baseline development review completed; final formal review NOT RUN
+- **Review status:** Baseline development review and formal E1–E4 baseline-result review completed; controlled-change and final review NOT RUN
 
 ## Known limitation
 
@@ -118,13 +124,13 @@ This document records completed baseline-development evidence. Formal evaluator-
 | Contributor | Contribution | Personally verified result |
 |---|---|---|
 | Human project owner | Approved the frozen specification/context, implementation plan and assumptions, baseline implementation, and documentation-only synchronization; subsequently performed the manual browser interaction smoke check | Application load, Space start, Arrow and A/D paddle movement, brick removal, scoring, life reduction from 3 to 2, and return to `READY` after a non-final miss were manually verified as baseline behavior |
-| Codex | Created the minimal scaffold and BrickPulse implementation, wrote and ran focused development tests, performed type/build verification, and conducted the available visual smoke check | 33/33 focused tests, typecheck, production build, and local visual render completed |
+| Codex | Created the minimal scaffold and BrickPulse implementation, wrote and ran focused development tests, performed type/build verification, conducted the available visual smoke check, and later ran the evaluator-owned E1–E4 harness in a fresh evaluator conversation | 33/33 focused development tests, typecheck, production build, local visual render, and 4/4 formal E1–E4 tests completed |
 
 If completed individually, record that fact instead of inventing a second contributor.
 
 ## Final review decision
 
 - **Decision:** NOT RUN
-- **What the evidence proves:** The baseline implementation completed its recorded development checks.
-- **What the evidence does not prove:** It does not prove formal evaluator PASS, controlled-change effectiveness, independent holdout success, or a final review decision.
-- **Next smallest step:** Run the separately authorized evaluator-owned formal evaluation and record its actual result without changing the frozen baseline first.
+- **What the evidence proves:** The baseline implementation completed its recorded development checks and passed formal E1–E4. E1–E4 discovered no baseline problem.
+- **What the evidence does not prove:** It does not prove the outcome of E5, controlled-change effectiveness, independent holdout success, or a final review decision.
+- **Next smallest step:** Execute the separately frozen E5 boundary evaluation only after authorization, without changing the frozen baseline first.
