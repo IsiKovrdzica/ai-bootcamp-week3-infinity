@@ -1,14 +1,14 @@
 # BrickPulse Browser Smoke Test
 
-This document contains a manual browser check for the initial screen and the basic start/movement interaction. It supplements the deterministic tests and the automated application smoke command; it does not replace them or the evaluator-owned formal tests.
+This document describes the automated browser smoke check and the additional manual scenarios for BrickPulse. It supplements deterministic tests; it does not replace them or the evaluator-owned formal tests.
 
-The browser interaction check below is manual, not an automated browser test. The automated server and entrypoint check is available as:
+The automated check uses Playwright with headless Chrome/Chromium. It exercises the rendered Canvas and keyboard input, not only HTTP delivery:
 
 ```bash
 npm run smoke
 ```
 
-That command starts a temporary Vite server on port 4173, requests the served page, and verifies the BrickPulse title, 640x480 Canvas, and module entrypoint. The server stops when the smoke command finishes, so its printed URL is an automation target and will not remain available for opening the game afterward. Use `npm run dev` and its printed URL for manual play. The smoke command does not simulate keyboard input or replace the manual Canvas check.
+The command starts a temporary Vite server on port 4173, retries server readiness and the module entrypoint request, and then checks the page title, the 640x480 Canvas and READY objects, ball movement after Space, paddle movement while ArrowRight is held, and uncaught browser errors. The server stops when the command finishes, so its printed URL is only an automation target. Use `npm run dev` and its printed URL for manual play. The script uses system Chrome/Chromium when found; otherwise, install Playwright's browser once with `npx playwright install chromium`.
 
 ## Reproduce
 
@@ -36,10 +36,13 @@ Open the Vite URL, normally `http://127.0.0.1:5173/`, in a browser.
 - **Observed:** The initial screen rendered with the 640x480 Canvas, 32-brick wall, score 0, three lives, paddle, ball, and `READY` message. Pressing Space changed the rendered frame and started play. Holding ArrowRight changed the rendered frame again, confirming basic input was received.
 - **Additional signal:** Canvas readback confirmed non-empty rendered pixels and reported `width: 640`, `height: 480`.
 
-## Automated smoke execution
+## Automated browser smoke execution
 
 - **Command:** `npm run smoke`
+- **Date:** 2026-09-28
+- **Browser:** Playwright 1.63.0 with system Chrome 147.0.7727.116, headless
 - **Result:** PASS
-- **Observed:** Vite served the application at `http://127.0.0.1:4173/`; all three named checks passed for the BrickPulse title, Canvas dimensions, and `/src/main.ts` entrypoint.
+- **Observed:** Vite served the application at `http://127.0.0.1:4173/`; all five checks passed: page title, Canvas contract and READY objects, ball launch after Space, paddle movement after ArrowRight, and no uncaught browser errors.
+- **Readiness handling:** The script retries the Vite page and `/src/main.ts` entrypoint before launching the browser, then retries browser navigation on transient failures.
 
 This smoke test was independently repeated during the final review. It is separate from the formal E1-E5 and H1 evaluator artifacts.

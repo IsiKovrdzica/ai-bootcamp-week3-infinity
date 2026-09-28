@@ -1,4 +1,6 @@
+import { access } from 'node:fs/promises'
 import { spawn } from 'node:child_process'
+import { chromium } from 'playwright'
 
 const host = process.env.SMOKE_HOST ?? '127.0.0.1'
 const port = process.env.SMOKE_PORT ?? '4173'
@@ -8,6 +10,7 @@ const server = spawn(process.execPath, ['node_modules/vite/bin/vite.js', '--host
 })
 
 let serverOutput = ''
+let browser
 server.stdout.on('data', (chunk) => {
   serverOutput += chunk.toString()
 })
@@ -15,23 +18,39 @@ server.stderr.on('data', (chunk) => {
   serverOutput += chunk.toString()
 })
 
-const stopServer = () => {
-  if (!server.killed) {
-    server.kill('SIGTERM')
-  }
-}
-
 const checks = [
-  ['page loads', '/', 200, (body) => body.includes('<title>BrickPulse</title>')],
-  ['Canvas contract', '/', 200, (body) => (
-    body.includes('id="game"')
-    && body.includes('width="640"')
-    && body.includes('height="480"')
-  )],
-  ['module entrypoint loads', '/src/main.ts', 200, (body) => (
-    body.includes('createGame')
-    && body.includes('renderGame')
-  )],
+  ['page loads', async (page) => {
+    assert(await page.title() === 'BrickPulse', 'page title was not BrickPulse')
+    assert((await page.locator('h1').textContent())?.trim() === 'BrickPulse', 'BrickPulse heading was not visible')
+  }],
+  ['Canvas contract and READY state', async (page) => {
+    const canvas = page.locator('#game')
+    assert(await canvas.evaluate((element) => element.width === 640 && element.height === 480), 'Canvas must be 640x480')
+    const ball = await findBallCenter(page)
+    assert(ball !== null, 'READY ball was not rendered')
+    assert(await hasPaddleAt(page, 320), 'READY paddle was not rendered at the initial position')
+  }],
+  ['Space starts the ball', async (page) => {
+    const before = await findBallCenter(page)
+    await page.keyboard.press('Space')
+    await page.waitForFunction((previous) => {
+      const current = window.__brickPulseBallCenter?.()
+      return current && Math.hypot(current.x - previous.x, current.y - previous.y) > 8
+    }, before, { timeout: 3000 })
+  }],
+  ['ArrowRight moves the paddle', async (page) => {
+    const before = await getPaddleCenter(page)
+    await page.keyboard.down('ArrowRight')
+    await page.waitForTimeout(250)
+    await page.keyboard.up('ArrowRight')
+    await page.waitForFunction((previousX) => {
+      const current = window.__brickPulsePaddleCenter?.()
+      return current !== null && current > previousX + 20
+    }, before, { timeout: 2000 })
+  }],
+  ['browser has no uncaught errors', async (_page, errors) => {
+    assert(errors.length === 0, errors.join('\n'))
+  }],
 ]
 
 console.log(`Temporary smoke target: ${baseUrl}`)
@@ -40,13 +59,67 @@ let failures = 0
 
 try {
   await waitForServer()
+  browser = await launchBrowser()
+  const page = await browser.newPage()
+  const pageErrors = []
+  page.on('pageerror', (error) => pageErrors.push(error.message))
 
-  for (const [name, path, expectedStatus, validate] of checks) {
+  await retry('browser navigation', async () => {
+    const response = await page.goto(baseUrl, { waitUntil: 'domcontentloaded', timeout: 5000 })
+    assert(response?.ok(), `page request failed with status ${response?.status() ?? 'no response'}`)
+    await page.locator('#game').waitFor({ state: 'visible', timeout: 3000 })
+  })
+
+  await page.evaluate(() => {
+    const canvas = document.querySelector('#game')
+    if (!(canvas instanceof HTMLCanvasElement)) return
+
+    const context = canvas.getContext('2d')
+    if (!context) return
+
+    const centroid = (predicate, yStart, yEnd) => {
+      const pixels = context.getImageData(0, 0, canvas.width, canvas.height)
+      let totalX = 0
+      let count = 0
+      for (let y = yStart; y < yEnd; y += 1) {
+        for (let x = 0; x < canvas.width; x += 1) {
+          const offset = (y * canvas.width + x) * 4
+          if (!predicate(pixels.data[offset], pixels.data[offset + 1], pixels.data[offset + 2])) continue
+          totalX += x
+          count += 1
+        }
+      }
+      return count === 0 ? null : totalX / count
+    }
+
+    window.__brickPulseBallCenter = () => {
+      const frame = context.getImageData(0, 0, canvas.width, canvas.height)
+      let totalX = 0
+      let totalY = 0
+      let count = 0
+      for (let y = 0; y < canvas.height; y += 1) {
+        for (let x = 0; x < canvas.width; x += 1) {
+          const offset = (y * canvas.width + x) * 4
+          if (frame.data[offset] > 240 && frame.data[offset + 1] > 225 && frame.data[offset + 2] < 170) {
+            totalX += x
+            totalY += y
+            count += 1
+          }
+        }
+      }
+      return count === 0 ? null : { x: totalX / count, y: totalY / count }
+    }
+
+    window.__brickPulsePaddleCenter = () => centroid(
+      (red, green, blue) => red > 80 && red < 130 && green > 220 && blue > 190,
+      449,
+      452,
+    )
+  })
+
+  for (const [name, run] of checks) {
     try {
-      const response = await fetch(`${baseUrl}${path}`)
-      const body = await response.text()
-      assert(response.status === expectedStatus, `expected ${expectedStatus}, got ${response.status}`)
-      assert(validate(body), 'response body did not match the expected contract')
+      await run(page, pageErrors)
       console.log(`PASS  ${name}`)
     } catch (error) {
       failures += 1
@@ -56,13 +129,12 @@ try {
   }
 } catch (error) {
   failures = checks.length
-  console.error('Smoke failed: the Vite server did not become available.')
+  console.error('Smoke failed: browser or Vite startup did not become ready.')
   console.error(`      ${error instanceof Error ? error.message : String(error)}`)
-  if (serverOutput.trim()) {
-    console.error(serverOutput.trim())
-  }
+  if (serverOutput.trim()) console.error(serverOutput.trim())
 } finally {
-  stopServer()
+  await browser?.close()
+  await stopServer()
 }
 
 if (failures > 0) {
@@ -74,24 +146,105 @@ if (failures > 0) {
 
 console.log('Temporary smoke server stopped. Run `npm run dev` to open the game manually.')
 
-async function waitForServer() {
-  for (let attempt = 0; attempt < 30; attempt += 1) {
+async function launchBrowser() {
+  const executablePath = await findSystemChrome()
+  return chromium.launch({
+    headless: true,
+    ...(executablePath ? { executablePath } : {}),
+  })
+}
+
+async function findSystemChrome() {
+  if (process.env.CHROME_PATH) return process.env.CHROME_PATH
+
+  for (const path of ['/usr/bin/google-chrome', '/usr/bin/chromium', '/usr/bin/chromium-browser']) {
     try {
-      const response = await fetch(baseUrl)
-      if (response.ok) {
-        return
-      }
+      await access(path)
+      return path
     } catch {
-      // Vite may need a moment to start listening.
+      // Fall back to Playwright's installed Chromium.
     }
-    await new Promise((resolve) => setTimeout(resolve, 100))
   }
 
-  throw new Error(`Vite did not serve ${baseUrl}`)
+  return undefined
+}
+
+async function waitForServer() {
+  await retry('Vite server readiness', async () => {
+    const pageResponse = await fetchWithRetry(`${baseUrl}/`, 3)
+    assert(pageResponse.status === 200, `page returned HTTP ${pageResponse.status}`)
+    const html = await pageResponse.text()
+    assert(html.includes('<title>BrickPulse</title>'), 'BrickPulse title was not served')
+
+    const moduleResponse = await fetchWithRetry(`${baseUrl}/src/main.ts`, 5)
+    assert(moduleResponse.status === 200, `module entrypoint returned HTTP ${moduleResponse.status}`)
+    const moduleBody = await moduleResponse.text()
+    assert(moduleBody.includes('createGame') && moduleBody.includes('renderGame'), 'game module entrypoint was incomplete')
+  }, 10)
+}
+
+async function fetchWithRetry(url, attempts) {
+  let lastError
+  for (let attempt = 1; attempt <= attempts; attempt += 1) {
+    try {
+      return await fetch(url, { signal: AbortSignal.timeout(5000) })
+    } catch (error) {
+      lastError = error
+      if (attempt < attempts) await delay(150 * attempt)
+    }
+  }
+  throw lastError ?? new Error(`Request failed: ${url}`)
+}
+
+async function retry(name, action, attempts = 4) {
+  let lastError
+  for (let attempt = 1; attempt <= attempts; attempt += 1) {
+    try {
+      return await action()
+    } catch (error) {
+      lastError = error
+      if (attempt < attempts) {
+        console.warn(`Retrying ${name} (${attempt + 1}/${attempts}).`)
+        await delay(200 * attempt)
+      }
+    }
+  }
+  throw lastError ?? new Error(`${name} failed`)
+}
+
+async function stopServer() {
+  if (server.exitCode !== null || server.signalCode !== null) return
+
+  const exited = new Promise((resolve) => server.once('exit', resolve))
+  server.kill('SIGTERM')
+  let timeoutId
+  const timeout = new Promise((resolve) => {
+    timeoutId = setTimeout(resolve, 2000)
+  })
+  await Promise.race([exited, timeout])
+  clearTimeout(timeoutId)
+  if (server.exitCode === null && server.signalCode === null) server.kill('SIGKILL')
+}
+
+async function findBallCenter(page) {
+  return page.evaluate(() => window.__brickPulseBallCenter?.() ?? null)
+}
+
+async function getPaddleCenter(page) {
+  const center = await page.evaluate(() => window.__brickPulsePaddleCenter?.() ?? null)
+  assert(center !== null, 'paddle pixels were not rendered')
+  return center
+}
+
+async function hasPaddleAt(page, expectedCenter) {
+  const center = await getPaddleCenter(page)
+  return Math.abs(center - expectedCenter) < 4
+}
+
+function delay(milliseconds) {
+  return new Promise((resolve) => setTimeout(resolve, milliseconds))
 }
 
 function assert(condition, message) {
-  if (!condition) {
-    throw new Error(message)
-  }
+  if (!condition) throw new Error(message)
 }

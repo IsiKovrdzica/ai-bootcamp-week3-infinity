@@ -101,6 +101,7 @@ E1–E4 passed as 4 formal tests in 1 test file. E5 was later run by name and ge
 | Command | Purpose | Actual result |
 |---|---|---|
 | `npm install` | Install the approved TypeScript, Vite, and Vitest development dependencies | Completed; npm also reported two moderate audit findings |
+| `npm install --save-dev playwright` | Add headless browser automation for interaction-level smoke checks | Completed; Playwright 1.63.0 added as a development dependency; no application runtime dependency was added |
 | `npm test -- --run src/config.test.ts` | Focused configuration RED/GREEN checks | Initial missing-module RED, then 14/14 passed |
 | `npm test -- --run src/game.test.ts` | Focused game-rule RED/GREEN checks | Initial missing-module RED, then 12/12 passed |
 | `npm test -- --run src/input.test.ts` | Focused input RED/GREEN checks | Initial missing-module RED, then 7/7 passed |
@@ -114,7 +115,7 @@ E1–E4 passed as 4 formal tests in 1 test file. E5 was later run by name and ge
 | Focused E5-derived regression | Preserve RED before the production change, then verify GREEN afterward | RED before implementation; GREEN after deterministic sub-stepping |
 | `npm test -- src/config.test.ts src/game.test.ts src/input.test.ts` | Post-change development regression suite | PASS; 34/34 tests passed |
 | `npm test` | Current checkout including formal and holdout evaluator files | PASS; 5 test files and 40/40 tests passed |
-| `npm run smoke` | Automated server and HTML entrypoint smoke check | PASS; Vite served the expected title, Canvas dimensions, and `/src/main.ts` entrypoint |
+| `npm run smoke` | Automated browser smoke check | PASS; 5/5 checks for page title, Canvas/READY rendering, Space launch, ArrowRight paddle movement, and uncaught browser errors |
 | `npm run typecheck` | Post-change TypeScript verification | PASS |
 | `npm run build` | Post-change production build verification | PASS |
 | `npm test -- evals/week3-formal.test.ts -t "E5"` | Official unchanged E5 same-eval post-change rerun | PASS; 1 test passed and 4 nonmatching tests were skipped |
@@ -129,7 +130,7 @@ E1–E4 passed as 4 formal tests in 1 test file. E5 was later run by name and ge
 | `npm test -- evals/week3-formal.test.ts` | PASS; 1 test file passed and 5/5 formal tests passed |
 | `npm run typecheck` | PASS; `tsc --noEmit` completed successfully |
 | `npm run build` | PASS; TypeScript checking and Vite production build completed, with 8 modules transformed |
-| `npm run smoke` | PASS; automated Vite server and HTML entrypoint check completed successfully |
+| `npm run smoke` | PASS; Playwright 1.63.0 drove system Chrome 147.0.7727.116 through the five documented browser checks |
 | `npm audit --omit=dev` | PASS; production-only dependency audit reported 0 vulnerabilities |
 
 ## Dependency audit
@@ -151,6 +152,15 @@ The holdout command was intentionally not rerun during the original scoped final
 - **Actual result:** The application loaded successfully; Space started the ball from `READY`; Left Arrow and Right Arrow moved the paddle; A and D also moved the paddle; bricks disappeared when hit; score increased when bricks were destroyed; intentionally missing the ball reduced lives from 3 to 2; and the game returned to `READY` after that non-final miss.
 - **Evidence:** Human-observed manual baseline verification. This smoke check is separate from the later formal evaluator-owned E1–E4 results; no formal PASS/FAIL is inferred from the smoke-check result itself.
 - **Classification:** Manual browser smoke check; not an automated browser test.
+
+## Automated browser verification
+
+- **Command:** `npm run smoke`
+- **Date:** 2026-09-28
+- **Browser:** Playwright 1.63.0 with system Chrome 147.0.7727.116 in headless mode
+- **Result:** PASS; 5/5 checks
+- **Observed:** The page and 640x480 Canvas loaded in `READY`; Space caused the ball to move; holding ArrowRight moved the paddle; no uncaught browser errors were observed.
+- **Reliability handling:** The smoke script retries Vite readiness, the transformed `/src/main.ts` request, and browser navigation before failing. It always stops the temporary Vite server after the run.
 
 ### Independent final-review smoke check
 

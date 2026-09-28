@@ -21,17 +21,18 @@ npm run preview
 ## Verification commands
 
 - `npm test` runs Vitest's discovered suite, including evaluator files present in the workspace.
-- `npm run smoke` starts a temporary Vite development server and checks the served BrickPulse HTML entrypoint.
+- `npm run smoke` starts a temporary Vite server and uses Playwright to check the initial Canvas, Space launch, and ArrowRight paddle movement in headless Chrome/Chromium.
 - `npm run typecheck` runs TypeScript checking without emitting files.
 - `npm run build` runs TypeScript checking and creates the Vite production build.
 - `npm run dev` starts the Vite development server.
 - `npm run preview` serves the production build locally.
 - `npm audit` reports known dependency vulnerabilities.
 
-The standard baseline verification flow is the focused development suite below, followed by `npm run typecheck` and `npm run build`:
+The standard baseline verification flow is the focused development suite and browser smoke check below, followed by `npm run typecheck` and `npm run build`:
 
 ```bash
 npm test -- src/config.test.ts src/game.test.ts src/input.test.ts
+npm run smoke
 ```
 
 The formal Week 3 evaluations and independent holdout are evaluator-owned artifacts. They are retained separately from the standard baseline flow and are not used to tune the implementation:
@@ -41,7 +42,7 @@ npm test -- evals/week3-formal.test.ts
 npm test -- evals/week3-holdout.test.ts
 ```
 
-The automated smoke command checks server delivery and required page markers. Its URL is only the temporary automation target: the smoke server stops when the command finishes, so the printed URL is not intended for opening the game afterward. Use `npm run dev` and its printed URL for manual play. The Canvas rendering and keyboard interaction check remains manual and is documented in `docs/BROWSER_SMOKE_TEST.md`.
+The smoke command uses an installed system Chrome/Chromium when available; otherwise install Playwright's Chromium once with `npx playwright install chromium`. It retries Vite readiness and entrypoint requests before opening the browser. The server URL is a temporary automation target, and the server stops when the command finishes. Use `npm run dev` and its printed URL for manual play. Additional manual scenarios are documented in `docs/BROWSER_SMOKE_TEST.md`.
 
 ## Project documentation
 
