@@ -27,7 +27,7 @@ specification
 ## Before editing
 
 1. Read `AGENTS.md` and route through `.github/00-index.instructions.md`.
-2. Read only context authorized for the current stage by `docs/CONTEXT_MANIFEST.md`.
+2. For Week03 work, read only context authorized for the current stage by docs/CONTEXT_MANIFEST.md. For the approved Week04 AI Coach, use its SpecKit artifacts and tasks.md dependency order.
 3. Confirm the allowed paths and current scope.
 4. State assumptions or contradictions before changing files.
 
@@ -39,10 +39,11 @@ specification
 - Preserve the completed baseline before formal evaluation or correction.
 - For a correction, record the signal, hypothesis, frozen variables, and one controlled change.
 - Log meaningful AI assistance without private reasoning.
+- For the approved Week04 feature, finish each task phase with its smallest relevant verification and focused diff inspection. Respect RED/GREEN ordering, dependency approval gates, and the separate offline/live verification gates in tasks.md.
 
 ## Evidence and external actions
 
 - Record actual commands, outputs, limitations, and skipped checks.
 - Never fabricate results or generated evidence.
 - Do not commit, push, deploy, publish, or contact external services unless separately requested.
-- Stop on contradictory requirements, missing material decisions, out-of-scope paths, or Week 4 behavior.
+- Stop on contradictory requirements, missing material decisions, out-of-scope paths, or Week04 behavior outside the approved AI Coach specification. Stop before a dependency install without its required approval and before any live provider call without the required offline gate and explicit authorization.

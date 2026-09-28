@@ -7,11 +7,14 @@ applyTo: "**/*"
 
 ## Focused implementation tests
 
-- Derive focused tests from `docs/GAME_SPEC.md`, not from implementation details.
+- Derive Week03 focused tests from docs/GAME_SPEC.md and approved Week04 focused tests from specs/001-brickpulse-ai-coach/spec.md, not from implementation details.
 - Test configuration validation and pure game rules without Canvas wherever possible.
 - Use explicit states, positions, velocities, and time deltas. Avoid uncontrolled randomness and wall-clock-sensitive assertions.
 - Separate JSON/object handling, contract validation, and gameplay meaning.
 - Cover a meaningful success case and a relevant rejection or boundary case for each implemented behavior slice.
+- Week04 routine tests are fake-first and credential-free. They must not make live provider calls or wait for real deadline durations.
+- Runtime validation must precede every provider invocation; structural and semantic invalid GameSummary cases assert zero provider calls. Provider output remains unknown until strict validation succeeds.
+- Use deterministic fake timers or injected timing for the shared deadline and retry behavior.
 
 ## RED, GREEN, regression
 
@@ -26,3 +29,5 @@ applyTo: "**/*"
 Formal Week 3 evaluations are evaluator-owned and run only after the baseline is frozen. They are not baseline implementation context and must not be used to tune the initial implementation.
 
 Manual Canvas checks may supplement deterministic tests, but they do not replace contract and rule tests. Record only commands and outcomes that were actually run.
+
+Week03 regressions remain required while testing Week04. Any optional Gemini verification is a separately authorized, one-call check after offline checks are green.

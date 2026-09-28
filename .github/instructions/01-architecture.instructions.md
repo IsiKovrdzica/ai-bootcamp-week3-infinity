@@ -19,10 +19,19 @@ BrickPulse is one small vanilla TypeScript browser application rendered with HTM
 
 Keep these responsibilities separable when the scaffold is created. Exact file paths may follow the eventual minimal scaffold, but dependency direction must remain game logic → state results, with browser input/rendering around that logic.
 
+## Approved Week04 AI Coach boundary
+
+- docs/GAME_SPEC.md remains authoritative for Week03 gameplay. specs/001-brickpulse-ai-coach/spec.md authorizes only the additive post-game AI Coach and minimum duration telemetry.
+- Browser code may send an exact terminal GameSummary only through POST /api/ai/advice; it must not import server/**, provider SDKs, backend environment values, prompts, or provider configuration.
+- The TypeScript backend owns request validation, the single advice endpoint, the shared deadline, retry policy, provider output validation, and safe response projection.
+- AI generation is accessed only through AiAdviceProvider; routine tests use the fake provider. The Gemini adapter is backend-only and optional live verification remains separate.
+- AI work must not run in updateGame, rendering, input handling, or an animation-frame path. Canvas rendering remains free of HTTP and provider behavior.
+- No second endpoint/provider, database, authentication, deployment, streaming, agent, dashboard, model fallback, or gameplay redesign is authorized.
+
 ## Change rules
 
-- Implement only behavior defined in `docs/GAME_SPEC.md`.
+- Implement Week03 gameplay only as defined in docs/GAME_SPEC.md, and Week04 AI Coach behavior only as defined in specs/001-brickpulse-ai-coach/spec.md.
 - Keep the fixed brick layout and single-level design.
 - Use a handwritten runtime validator for the three-field `GameConfig`.
-- Do not add a UI framework, validation library, physics engine, backend, database, provider SDK, or Week 4 feature.
+- Do not add a UI framework, validation library, physics engine, database, or any feature outside the approved Week04 boundary. Dependencies still require the explicit gates in tasks.md.
 - Do not hide rule decisions inside drawing code or DOM event handlers.

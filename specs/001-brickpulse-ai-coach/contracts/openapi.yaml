@@ -1,0 +1,123 @@
+openapi: 3.1.0
+info:
+  title: BrickPulse AI Coach API
+  version: 1.0.0
+  description: Additive Week04 API contract for one post-game coaching feature.
+paths:
+  /api/ai/advice:
+    post:
+      operationId: createAiAdvice
+      summary: Generate one validated coaching response for a completed game
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GameSummary'
+      responses:
+        '200':
+          description: Validated AI advice
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AiAdvice'
+        '400':
+          description: Structurally or semantically invalid game summary
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InvalidGameSummaryError'
+        '503':
+          description: Provider failure, timeout, exhausted transient attempts, or invalid provider output
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AiAdviceUnavailableError'
+components:
+  schemas:
+    GameSummary:
+      type: object
+      additionalProperties: false
+      required:
+        - outcome
+        - score
+        - bricksDestroyed
+        - livesRemaining
+        - livesLost
+        - durationSeconds
+      properties:
+        outcome:
+          type: string
+          enum: [WON, GAME_OVER]
+        score:
+          type: integer
+          minimum: 0
+        bricksDestroyed:
+          type: integer
+          minimum: 0
+          maximum: 32
+        livesRemaining:
+          type: integer
+          minimum: 0
+          maximum: 3
+        livesLost:
+          type: integer
+          minimum: 0
+          maximum: 3
+        durationSeconds:
+          type: number
+          minimum: 0
+      description: >-
+        Application semantic invariants also require score ===
+        bricksDestroyed * 10, livesRemaining + livesLost === 3, WON requires
+        bricksDestroyed === 32, and GAME_OVER requires livesRemaining === 0.
+        These cross-field rules are enforced by backend runtime validation even
+        where JSON Schema cannot express them directly.
+    AiAdvice:
+      type: object
+      additionalProperties: false
+      required: [summary, recommendation, category]
+      properties:
+        summary:
+          type: string
+          minLength: 1
+          maxLength: 160
+          pattern: '.*\S.*'
+          description: Must contain at least one non-whitespace character; backend runtime validation is authoritative.
+        recommendation:
+          type: string
+          minLength: 1
+          maxLength: 220
+          pattern: '.*\S.*'
+          description: Must contain at least one non-whitespace character; backend runtime validation is authoritative.
+        category:
+          type: string
+          enum: [survival, efficiency, consistency, general]
+    InvalidGameSummaryError:
+      type: object
+      additionalProperties: false
+      required: [error]
+      properties:
+        error:
+          type: object
+          additionalProperties: false
+          required: [code, message]
+          properties:
+            code:
+              const: INVALID_GAME_SUMMARY
+            message:
+              const: Invalid game summary.
+    AiAdviceUnavailableError:
+      type: object
+      additionalProperties: false
+      required: [error]
+      properties:
+        error:
+          type: object
+          additionalProperties: false
+          required: [code, message]
+          properties:
+            code:
+              const: AI_ADVICE_UNAVAILABLE
+            message:
+              const: AI advice is temporarily unavailable. Please try again later.
