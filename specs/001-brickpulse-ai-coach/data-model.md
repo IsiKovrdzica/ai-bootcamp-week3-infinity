@@ -71,7 +71,9 @@ Both projections have exact keys and contain no diagnostic field.
 
 | Kind | Retryable | Examples |
 |---|---:|---|
-| `transient` | yes, once if deadline remains | connection failure, 408, 429, 5xx |
+| `transient` | yes, once if deadline remains | connection failure, 408, 429 |
+| `provider_unavailable` | fallback only, once if deadline remains | plain 404 primary-model/resource unavailable, 500, 502, 503 |
+| `invalid_output` | no | malformed provider JSON or failed `AiAdvice` validation |
 | `auth` | no | invalid/unauthorized credential |
 | `configuration` | no | missing model/key, unsupported model |
 | `safety` | no | provider refusal/safety block |
@@ -92,6 +94,7 @@ Ephemeral sanitized diagnostic event only:
 | `timestamp` | ISO string | backend-generated |
 | `latencyMs` | non-negative number | whole request operation |
 | `outcome` | `success | failure | timeout` | sanitized |
+| `failureKind` | optional closed failure kind | present only for sanitized failure/timeout events; no raw provider details |
 | `attemptCount` | `1 | 2` | one event is emitted only for an actual provider attempt; invalid local input emits no event |
 | `tokenUsage` | optional numeric summary | only when safely exposed by SDK; no payload |
 

@@ -9,6 +9,7 @@ export type ProviderFailureKind =
   | 'client_cancelled'
   | 'permanent'
   | 'programming'
+  | 'invalid_output'
 
 export class ProviderFailure extends Error {
   constructor(readonly kind: ProviderFailureKind) {

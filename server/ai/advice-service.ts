@@ -53,6 +53,7 @@ export function createAdviceService(
       outcome: import('./usage-log.js').AiUsageEvent['outcome'],
       attemptCount: 1 | 2,
       started: number,
+      failureKind?: import('./usage-log.js').AiDiagnosticFailureKind,
     ) => sink({
       provider: diagnostics.provider ?? 'fake',
       model: selectedModel,
@@ -61,6 +62,7 @@ export function createAdviceService(
       outcome,
       attemptCount,
       attemptKind: selectedAttemptKind,
+      ...(failureKind ? { failureKind } : {}),
     })
 
     try {
@@ -73,12 +75,12 @@ export function createAdviceService(
             deadlinePromise,
           ])
           if (output === deadlineResult || expired) {
-            emitAttempt('timeout', attempt, attemptStarted)
+            emitAttempt('timeout', attempt, attemptStarted, 'timeout')
             return { ok: false, kind: 'unavailable' }
           }
           const advice = validateAiAdvice(output)
           if (!advice.ok) {
-            emitAttempt('failure', attempt, attemptStarted)
+            emitAttempt('failure', attempt, attemptStarted, 'invalid_output')
             return { ok: false, kind: 'unavailable' }
           }
           const { summary, recommendation, category } = advice.value
@@ -86,10 +88,11 @@ export function createAdviceService(
           return { ok: true, advice: { summary, recommendation, category } }
         } catch (error) {
           if (expired || timing.now() >= deadline) {
-            emitAttempt('timeout', attempt, attemptStarted)
+            emitAttempt('timeout', attempt, attemptStarted, 'timeout')
             return { ok: false, kind: 'unavailable' }
           }
-          emitAttempt('failure', attempt, attemptStarted)
+          const failureKind = error instanceof ProviderFailure ? error.kind : 'programming'
+          emitAttempt('failure', attempt, attemptStarted, failureKind)
           const useFallback = error instanceof ProviderFailure && error.kind === 'provider_unavailable'
           const retryPrimary = error instanceof ProviderFailure && error.kind === 'transient'
           if ((!retryPrimary && !useFallback) || attempt === 2 || (useFallback && !fallbackProvider)) {

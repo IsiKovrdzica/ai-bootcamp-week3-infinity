@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { createAdviceService, type AdviceTiming } from './advice-service.js'
 import { FakeAiAdviceProvider } from './fake-provider.js'
+import { classifyGeminiFailure } from './gemini-provider.js'
 import { validWonSummary } from './game-summary-fixtures.js'
 import { ProviderFailure } from './provider.js'
 import type { AiUsageEvent, AiUsageSink } from './usage-log.js'
@@ -75,6 +76,31 @@ describe('AiUsageEvent sink', () => {
     expectSanitized(events)
   })
 
+  it('records a sanitized plain-404 primary failure and fixed-fallback success', async () => {
+    const events: AiUsageEvent[] = []
+    const primary = {
+      providerCallCount: 0,
+      async generateAdvice(_summary: unknown, { signal }: { signal: AbortSignal }) {
+        this.providerCallCount += 1
+        throw new ProviderFailure(classifyGeminiFailure({ status: 404 }, signal))
+      },
+    }
+    const service = createAdviceService(primary, immediateTiming(), {
+      usageSink: (event) => events.push(event),
+      provider: 'gemini',
+      model: 'gemini-2.5-flash-lite',
+      fallbackModel: 'gemini-3.5-flash-lite',
+    }, new FakeAiAdviceProvider({ mode: 'success' }))
+
+    await service.requestAdvice(validWonSummary)
+
+    expect(events).toMatchObject([
+      { model: 'gemini-2.5-flash-lite', outcome: 'failure', failureKind: 'provider_unavailable', attemptCount: 1, attemptKind: 'initial' },
+      { model: 'gemini-3.5-flash-lite', outcome: 'success', attemptCount: 2, attemptKind: 'fallback' },
+    ])
+    expectSanitized(events)
+  })
+
   it('records exactly two safe events when the fallback fails', async () => {
     const events: AiUsageEvent[] = []
     const service = createAdviceService(unavailableProvider(), immediateTiming(), {
@@ -88,6 +114,30 @@ describe('AiUsageEvent sink', () => {
       { model: 'fallback-model', outcome: 'failure', attemptCount: 2, attemptKind: 'fallback' },
     ])
     expect(events).toHaveLength(2)
+    expectSanitized(events)
+  })
+
+  it('classifies malformed unknown provider output as sanitized invalid_output', async () => {
+    const events: AiUsageEvent[] = []
+    const service = createAdviceService(new FakeAiAdviceProvider({ mode: 'malformed', malformedOutput: { summary: 'bad' } }), immediateTiming(), {
+      usageSink: (event) => events.push(event), provider: 'gemini', model: 'primary-model',
+    })
+
+    await service.requestAdvice(validWonSummary)
+
+    expect(events).toMatchObject([{ outcome: 'failure', failureKind: 'invalid_output', attemptCount: 1, attemptKind: 'initial' }])
+    expectSanitized(events)
+  })
+
+  it('keeps provider_unavailable distinguishable without raw provider details', async () => {
+    const events: AiUsageEvent[] = []
+    const service = createAdviceService(unavailableProvider(), immediateTiming(), {
+      usageSink: (event) => events.push(event), provider: 'gemini', model: 'primary-model',
+    })
+
+    await service.requestAdvice(validWonSummary)
+
+    expect(events).toMatchObject([{ outcome: 'failure', failureKind: 'provider_unavailable', attemptCount: 1, attemptKind: 'initial' }])
     expectSanitized(events)
   })
 

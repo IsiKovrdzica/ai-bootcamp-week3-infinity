@@ -46,7 +46,7 @@ Every invocation increments `providerCallCount` synchronously at method entry.
 - Own the shared 15-second deadline and optional second and final attempt.
 - Retry the primary only for normalized `transient` network/408/429 failures;
   use the fixed Gemini fallback only for normalized `provider_unavailable`
-  500/502/503 failures.
+  plain 404/500/502/503 failures. An explicitly classified configuration/unsupported-model 404 remains terminal; this exception does not authorize generic 4xx fallback.
 - Never exceed two total provider calls or fallback for auth, configuration,
   safety, cancellation, malformed output, or validation failures.
 - Strictly validate output after each successful provider return.

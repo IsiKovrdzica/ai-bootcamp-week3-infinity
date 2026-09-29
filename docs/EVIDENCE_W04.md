@@ -52,9 +52,7 @@ and [provider contract](../specs/001-brickpulse-ai-coach/contracts/provider.md).
 
 Mentor reliability addendum: the same two-call boundary now selects the second
 slot by normalized failure class. Network/408/429 retry the primary model;
-500/502/503 provider-unavailable failures use the tested Gemini fallback
-`gemini-3.5-flash-lite`. Auth, configuration, safety, cancellation, malformed
-output, and validation failures receive no second call.
+Plain 404 primary-model/resource-unavailable and 500/502/503 provider-unavailable failures use the tested Gemini fallback `gemini-3.5-flash-lite`. An explicitly classified configuration/unsupported-model 404 remains terminal; auth, configuration, safety, cancellation, malformed output, and validation failures receive no second call. The plain-404 rule does not authorize generic 4xx fallback.
 
 Ephemeral usage telemetry is non-persistent and emits one sanitized event for each actual provider attempt. It records the attempt number, `attemptKind` (`initial`, `retry`, `fallback`), actual model, latency, and sanitized outcome; it contains no game summary, prompt, credential, raw payload, stack trace, or raw error. Invalid local input emits no provider-attempt event.
 
@@ -96,7 +94,8 @@ larger model for lower expected cost and latency.
 | Transient then success | Success with 2 provider calls | `server/integration.test.ts` |
 | Transient twice | 2 provider calls, then HTTP 503 | `server/integration.test.ts` |
 | Network/408/429 retry selection | Second and final call remains on primary; total 2 | `server/ai/advice-service.test.ts`, `server/ai/gemini-provider.test.ts` |
-| 500/502/503 unavailable selection | Second and final call uses fixed Gemini fallback; total 2 | `server/ai/advice-service.test.ts`, `server/integration.test.ts`, `server/ai/gemini-provider.test.ts` |
+| Plain 404/500/502/503 unavailable selection | Second and final call uses fixed Gemini fallback; total 2; plain 404 never retries primary | `server/ai/advice-service.test.ts`, `server/ai/gemini-provider.test.ts` |
+| Explicit configuration/unsupported-model 404 | Terminal; one primary call and no fallback | `server/ai/advice-service.test.ts`, `server/ai/gemini-provider.test.ts` |
 | Invalid fallback output | Same runtime validator rejects extra field/category; total 2 then 503 | `server/ai/advice-service.test.ts` |
 | Non-retryable failure | 1 provider call | `server/integration.test.ts` |
 | Concurrent coach action | One in-flight browser request | `server/integration.test.ts`, `src/ai/coach-controller.test.ts` |
@@ -125,6 +124,19 @@ Phase 13 observed results:
 No T138 fix was required. Phase 12 cross-boundary coverage is represented by
 the matrix and `server/integration.test.ts` (12 tests).
 
+### Final plain-404 correction verification
+
+The final correction was verified offline without running either Gemini verification command or making a provider call:
+
+- `npm test -- server/ai/gemini-provider.test.ts server/ai/advice-service.test.ts`: 2/2 files and 98/98 tests passed.
+- `npm test -- server/ai/usage-log.test.ts server/composition.test.ts`: 2/2 files and 11/11 tests passed.
+- `npm test -- server/integration.test.ts`: 1/1 file and 12/12 tests passed.
+- `npm test`: 22/22 files and 259/259 tests passed.
+- `npm run smoke`: 6/6 checks passed.
+- `npm run typecheck`, `npm run build`, and `npm run check:frontend-boundary`: passed.
+- Week03 focused: 42/42; formal: 5/5; holdout: 1/1.
+- `git diff --check`: passed.
+
 ## Live Gemini verification
 
 Command: `npm run verify:gemini`
@@ -139,9 +151,11 @@ Sanitized result:
 
 Retry: no retry performed.
 
-The one permitted live verification did not produce a validated successful
-result. The sanitized script intentionally does not expose enough raw provider
-detail to determine a root cause from this evidence alone. It was not rerun. No new live/provider verification call occurred during the fallback implementation or this final audit.
+The one permitted live verification did not produce a validated successful result. The sanitized script intentionally does not expose enough raw provider detail to determine a root cause from this evidence alone. It was not rerun.
+
+## Manual browser 404 observation
+
+Separate from both controlled checks above, manual `ASK AI COACH` use repeatedly produced sanitized primary-model HTTP 404 observations for `gemini-2.5-flash-lite`; frontend/proxy/backend connectivity remained functional and the public endpoint returned its safe HTTP 503 envelope. Because the fixed `gemini-3.5-flash-lite` model had already passed its separate one-call capability check, a plain primary-model/resource 404 is normalized as `provider_unavailable` and receives the bounded fallback slot. Explicit configuration/unsupported-model 404 remains terminal, and this does not permit arbitrary 4xx fallback. No live verification command was rerun for this observation or correction.
 
 ## Secret and frontend bundle boundary
 

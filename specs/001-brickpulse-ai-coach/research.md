@@ -71,9 +71,8 @@
 ### Mentor addendum: bounded second-slot model selection
 
 **Decision**: Retain at most two application provider calls. Network/connection,
-408, and 429 use the second slot for the configured primary model; normalized
-500, 502, and 503 provider-unavailable failures use the same second slot for
-the capability-checked `gemini-3.5-flash-lite` Gemini model.
+408, and 429 use the second slot for the configured primary model; a plain primary-model/resource 404 and normalized 500, 502, and 503 provider-unavailable failures use the same second slot for
+the capability-checked `gemini-3.5-flash-lite` Gemini model. Repeated sanitized primary HTTP 404 observations during manual `ASK AI COACH` use, together with that separate capability check, justify this bounded primary-model/resource exception; they do not replace either historical controlled result.
 
 **Evidence**: The candidate completed one separate sanitized capability check
 through the same prompt, SDK adapter, structured-output settings, and runtime
@@ -81,8 +80,7 @@ validator: `PASSED` / `providerCallCount: 1` / `adviceValid: true`. This was
 not a retry of the primary live check, which remains `FAILED` /
 `providerCallCount: 1` / `adviceValid: false`.
 
-**Boundary**: No third call, model chain, additional provider, or fallback for
-auth/configuration/safety/validation failures.
+**Boundary**: No third call, model chain, additional provider, or fallback for auth/configuration/safety/validation failures. A 404 explicitly classified as configuration or unsupported model remains terminal; the plain-404 exception does not broaden fallback to generic 4xx.
 
 ### Use AbortSignal plus a local settle guard
 

@@ -42,9 +42,10 @@ The optional AI Coach is available only after `WON` or `GAME_OVER`. On an explic
 Gemini reliability is deliberately bounded:
 
 - Network/connection failures, 408, and 429 receive one same-primary retry.
-- 500, 502, and 503 receive one fixed `gemini-3.5-flash-lite` fallback attempt.
+- A plain provider 404 (primary-model/resource unavailable), 500, 502, and 503 receive one fixed `gemini-3.5-flash-lite` fallback attempt.
+- An explicitly classified configuration/unsupported-model 404 remains terminal; this does not make generic 4xx fallback-eligible.
 - All attempts share one 15-second application deadline, with at most two application-level provider calls.
-- Other 5xx, and auth, configuration, safety, cancellation, malformed-output, and application-validation failures are terminal.
+- 400, 401, 403, other 5xx, and auth, configuration, safety, cancellation, malformed-output, and application-validation failures are terminal.
 - Gemini SDK internal retries are disabled with `retryOptions.attempts = 1`.
 
 ## Verification commands

@@ -15,7 +15,7 @@ The backend uses Node's built-in HTTP server rather than a server framework. Rou
 | Frontend | Existing vanilla TypeScript, HTML, CSS, Canvas, and Vite |
 | Backend | Node.js TypeScript, ESM, built-in `node:http` |
 | Runtime baseline | Node 20+ documented; current development environment is Node 24 |
-| AI provider | Gemini through `@google/genai`; primary model read from `GEMINI_MODEL`; fixed capability-checked backend fallback `gemini-3.5-flash-lite` only for normalized 500/502/503 unavailability |
+| AI provider | Gemini through `@google/genai`; primary model read from `GEMINI_MODEL`; fixed capability-checked backend fallback `gemini-3.5-flash-lite` only for normalized plain 404/500/502/503 unavailability |
 | Validation | Handwritten exact-key runtime validators; no schema-validation dependency |
 | Testing | Existing Vitest; pure handler/service/controller tests with fake provider and fake timers |
 | Local routing | Vite proxy `/api` to backend on `127.0.0.1:8787`; browser uses relative `/api/ai/advice` |
@@ -120,7 +120,7 @@ The backend does not import a TypeScript type assertion as proof. Validators ret
    }
    ```
 
-2. Define normalized provider failures with `transient` (same-primary retry) and `provider_unavailable` (fallback-eligible 500/502/503), plus terminal auth/configuration/safety/cancellation/permanent/programming classes.
+2. Define normalized provider failures with `transient` (same-primary retry) and `provider_unavailable` (fallback-eligible plain 404/500/502/503), plus terminal auth/configuration/safety/cancellation/permanent/programming classes.
 3. Implement one outer 15,000 ms deadline, one `AbortController`, at most two calls, and one fixed 250 ms injected delay before either permitted second call.
 4. Race the complete operation against the deadline in addition to passing the signal. Once expired, mark the operation settled, abort the signal, return failure, and ignore any late provider fulfillment.
 5. Validate provider output after each successful provider return. Invalid output is immediately non-retryable.
@@ -188,7 +188,7 @@ for attempt in [1, 2]:
   call provider once with shared abort signal
   if valid output: return validated advice only if deadline still active
   if failure is network/408/429 transient: select primary for the second slot
-  if failure is normalized 500/502/503 unavailable: select tested Gemini fallback for the second slot
+  if failure is normalized plain 404/500/502/503 unavailable: select tested Gemini fallback for the second slot
   if failure is otherwise non-retryable: fail safely
   if attempt == 2: fail safely
   wait min(250 ms, remaining budget) with abort support

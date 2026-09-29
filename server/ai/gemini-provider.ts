@@ -63,8 +63,12 @@ export class GeminiAiAdviceProvider implements AiAdviceProvider {
           httpOptions: { retryOptions: { attempts: 1 } },
         },
       })
-      if (typeof response.text !== 'string') throw new ProviderFailure('programming')
-      return JSON.parse(response.text) as unknown
+      if (typeof response.text !== 'string') throw new ProviderFailure('invalid_output')
+      try {
+        return JSON.parse(response.text) as unknown
+      } catch {
+        throw new ProviderFailure('invalid_output')
+      }
     } catch (error) {
       if (error instanceof ProviderFailure) throw error
       throw new ProviderFailure(classifyGeminiFailure(error, signal))
@@ -93,9 +97,11 @@ export function classifyGeminiFailure(
   const message = typeof candidate?.message === 'string' ? candidate.message.toLowerCase() : ''
   if (status !== undefined && (message.includes('safety') || message.includes('blocked'))) return 'safety'
   if (status !== undefined && (message.includes('configuration') || message.includes('unsupported model'))) return 'configuration'
+  if (status === 404) return 'provider_unavailable'
   if (status !== undefined && status >= 400 && status <= 499) return 'permanent'
   return 'programming'
 }
+
 
 export function extractSafeTokenUsage(metadata: unknown):
   | { input?: number; output?: number }

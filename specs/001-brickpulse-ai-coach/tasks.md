@@ -339,8 +339,8 @@ The SDK compatibility research task may start earlier, but no live adapter or ca
 ## Mentor reliability addendum — bounded tested-model fallback
 
 - [x] M001 Capability-check `gemini-3.5-flash-lite` through the existing prompt, adapter, structured-output, and runtime-validation path before use; observed `PASSED` / `providerCallCount: 1` / `adviceValid: true` with no retry.
-- [x] M002 Preserve one 15,000 ms deadline and at most two total application provider calls; select the second slot as primary retry for network/408/429 or fixed Gemini fallback for normalized 500/502/503 unavailability.
-- [x] M003 Keep auth, configuration, safety, cancellation, malformed output, invalid local input, and application validation failures terminal; add deterministic call-count and late-result tests.
+- [x] M002 Preserve one 15,000 ms deadline and at most two total application provider calls; select the second slot as primary retry for network/408/429 or fixed Gemini fallback for normalized plain 404/500/502/503 unavailability.
+- [x] M003 Keep auth, configuration (including explicitly identified unsupported-model 404), safety, cancellation, malformed output, invalid local input, and application validation failures terminal; add deterministic call-count and late-result tests.
 - [x] M004 Keep SDK attempts at 1 per provider method call, public HTTP envelopes unchanged, browser/provider boundary unchanged, and no fallback chain or additional provider.
 - [x] M005 Keep telemetry ephemeral and non-persistent; record one sanitized event per actual provider attempt with its kind and actual model, without payload or error data; invalid local input records no provider-attempt event.
 

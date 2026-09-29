@@ -230,6 +230,28 @@ describe('advice service bounded retry-versus-fallback selection', () => {
     expect(primary.providerCallCount + fallback.providerCallCount).toBe(2)
   })
 
+  it('uses the fallback after a plain 404 without retrying the primary', async () => {
+    const primary = failingProvider(classifyGeminiFailure({ status: 404 }, new AbortController().signal))
+    const fallback = new FakeAiAdviceProvider({ mode: 'success', advice })
+    const service = createAdviceService(primary, immediateTiming(), {}, fallback)
+
+    await expect(service.requestAdvice(validWonSummary)).resolves.toEqual({ ok: true, advice })
+    expect(primary.providerCallCount).toBe(1)
+    expect(fallback.providerCallCount).toBe(1)
+    expect(primary.providerCallCount + fallback.providerCallCount).toBe(2)
+  })
+
+  it('returns unavailable after the fallback fails following a plain 404', async () => {
+    const primary = failingProvider(classifyGeminiFailure({ status: 404 }, new AbortController().signal))
+    const fallback = failingProvider('provider_unavailable')
+    const service = createAdviceService(primary, immediateTiming(), {}, fallback)
+
+    await expect(service.requestAdvice(validWonSummary)).resolves.toEqual({ ok: false, kind: 'unavailable' })
+    expect(primary.providerCallCount).toBe(1)
+    expect(fallback.providerCallCount).toBe(1)
+    expect(primary.providerCallCount + fallback.providerCallCount).toBe(2)
+  })
+
   it('returns unavailable after fallback fails and never exceeds two calls', async () => {
     const primary = failingProvider('provider_unavailable')
     const fallback = failingProvider('provider_unavailable')
@@ -263,6 +285,24 @@ describe('advice service bounded retry-versus-fallback selection', () => {
         this.providerCallCount += 1
         now = 14_900
         throw new ProviderFailure('provider_unavailable')
+      },
+    }
+    const fallback = new FakeAiAdviceProvider({ mode: 'success', advice })
+    const service = createAdviceService(primary, { now: () => now, sleep: async () => {}, setTimeout, clearTimeout }, {}, fallback)
+
+    await expect(service.requestAdvice(validWonSummary)).resolves.toEqual({ ok: false, kind: 'unavailable' })
+    expect(primary.providerCallCount).toBe(1)
+    expect(fallback.providerCallCount).toBe(0)
+  })
+
+  it('does not start the fallback after a plain 404 when fewer than 250 ms remain', async () => {
+    let now = 0
+    const primary = {
+      providerCallCount: 0,
+      async generateAdvice(_summary: unknown, { signal }: { signal: AbortSignal }) {
+        this.providerCallCount += 1
+        now = 14_900
+        throw new ProviderFailure(classifyGeminiFailure({ status: 404 }, signal))
       },
     }
     const fallback = new FakeAiAdviceProvider({ mode: 'success', advice })
@@ -317,6 +357,16 @@ describe('advice service bounded retry-versus-fallback selection', () => {
     },
   )
 
+  it('keeps an explicitly unsupported-model 404 terminal without fallback', async () => {
+    const primary = failingProvider(classifyGeminiFailure({ status: 404, message: 'unsupported model' }, new AbortController().signal))
+    const fallback = new FakeAiAdviceProvider({ mode: 'success', advice })
+    const service = createAdviceService(primary, immediateTiming(), {}, fallback)
+
+    await expect(service.requestAdvice(validWonSummary)).resolves.toEqual({ ok: false, kind: 'unavailable' })
+    expect(primary.providerCallCount).toBe(1)
+    expect(fallback.providerCallCount).toBe(0)
+  })
+
   it('does not fallback invalid provider output or invalid local input', async () => {
     const malformed = new FakeAiAdviceProvider({ mode: 'malformed', malformedOutput: { ...advice, extra: true } })
     const fallback = new FakeAiAdviceProvider({ mode: 'success', advice })
@@ -338,10 +388,13 @@ describe('advice service concrete Gemini failure mapping', () => {
     ['network', new TypeError('connection reset'), 'transient', 2, 0],
     ['408', { status: 408 }, 'transient', 2, 0],
     ['429', { status: 429 }, 'transient', 2, 0],
+    ['404', { status: 404 }, 'provider_unavailable', 1, 1],
     ['500', { status: 500 }, 'provider_unavailable', 1, 1],
     ['502', { status: 502 }, 'provider_unavailable', 1, 1],
     ['503', { status: 503 }, 'provider_unavailable', 1, 1],
     ['400', { status: 400 }, 'permanent', 1, 0],
+    ['501', { status: 501 }, 'permanent', 1, 0],
+    ['504', { status: 504 }, 'permanent', 1, 0],
     ['401', { status: 401 }, 'auth', 1, 0],
     ['403', { status: 403 }, 'auth', 1, 0],
     ['safety', { status: 400, message: 'safety blocked' }, 'safety', 1, 0],
