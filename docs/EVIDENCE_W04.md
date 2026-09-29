@@ -59,8 +59,15 @@ exact structured advice fields. The internal prompt text is intentionally not
 reproduced here.
 
 `GeminiAiAdviceProvider` is the sole live adapter. Credentials and model
-selection are backend configuration. The configured provider is Gemini; the
-model identifier is deployment configuration and is not recorded here.
+selection are backend configuration.
+
+- Provider: Google Gemini
+- Model: `gemini-2.5-flash-lite`
+
+The AI Coach consumes only six validated completed-game summary fields and
+returns a short structured three-field response. A lightweight Flash-Lite
+model is sufficient for this bounded post-game analysis and is preferable to a
+larger model for lower expected cost and latency.
 
 ## Evaluation matrix
 
@@ -146,7 +153,7 @@ evaluation, and smoke checks all passed as recorded above.
 | FR-011–FR-012: provider abstraction and two approved implementations | `server/ai/provider.ts`, fake provider, Gemini adapter, provider tests | Covered |
 | FR-013–FR-016: exact untrusted output validation and no malformed display | `validateAiAdvice`, advice service, integration tests | Covered |
 | FR-017–FR-020: shared deadline, bounded transient retry, safe failure/no leakage | `server/ai/advice-service.ts`, app/service/integration tests | Covered |
-| FR-021–FR-023: backend-only configuration and environment example | `server/ai/config.ts`, `server/composition.ts`, `.gitignore`, `.env.example`, frontend-boundary checks | Covered; Gemini is recorded as provider. The actual model identifier remains deployment configuration and is not copied from local `.env` into evidence. |
+| FR-021–FR-023: backend-only configuration and environment example | `server/ai/config.ts`, `server/composition.ts`, `.gitignore`, `.env.example`, frontend-boundary checks | Covered; provider is Google Gemini and the configured model is `gemini-2.5-flash-lite`. |
 | FR-024–FR-027: Week03 preservation and minimum terminal telemetry | `src/game.ts`, `src/ai/game-summary.ts`, game/summary tests, Phase 13 regression results | Covered |
 | FR-028–FR-029: ownership/restart safety and adjacent DOM without Canvas changes | `CoachController`, `src/main.ts`, controller/integration tests, smoke; `src/render.ts` unchanged | Covered |
 | API MUSTs: exact six-field request, exact three-field 200, exact 400/503 envelopes | [OpenAPI contract](../specs/001-brickpulse-ai-coach/contracts/openapi.yaml), `server/app.ts`, app/integration tests | Covered |
@@ -179,8 +186,16 @@ validated live attempt, not evidence of a live pass and not diagnosed here.
 
 ## Team contributions
 
-Not documented: no factual contributor information was provided for this
-evidence artifact, and no contributor attribution is inferred.
+- Mateja completed the Week04 implementation work, including specification and
+  planning, frontend/backend AI integration, provider abstraction, validation,
+  reliability behavior, tests, security checks, live verification procedure,
+  and final evidence.
+- The second team member was unable to complete their planned implementation
+  contribution because of other obligations.
+
+The assignment is defined as pair work, so this factual contribution split is
+recorded transparently rather than inferred. No second-member name or activity
+is attributed here.
 
 ## References
 
