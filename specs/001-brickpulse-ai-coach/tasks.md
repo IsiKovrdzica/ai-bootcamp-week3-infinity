@@ -255,16 +255,16 @@ The SDK compatibility research task may start earlier, but no live adapter or ca
 
 **Purpose**: Prove the complete Core behavior offline.
 
-- [ ] T120 Add fake-backed frontend/backend success integration coverage for exact request → exact HTTP 200 advice → rendered success state.
-- [ ] T121 Add invalid structural and semantic integration cases → exact HTTP 400 and `providerCallCount === 0`.
-- [ ] T122 Add permanent provider failure → exact HTTP 503 and safe UI message.
-- [ ] T123 Add shared-deadline timeout → exact HTTP 503 using fake time; no real 15-second sleep.
-- [ ] T124 Add malformed output, extra field, and invalid category → exact HTTP 503 and no malformed data rendered.
-- [ ] T125 Add transient-then-success and twice-transient integration cases → no more than 2 calls; add non-retryable → exactly 1 call.
-- [ ] T126 Add concurrent frontend click and restart-during-pending integration coverage; assert one in-flight request and stale result rejection.
-- [ ] T127 Add a browser-facing artifact/import test or build inspection asserting no `@google/genai`, `GEMINI_API_KEY`, configured key value, provider prompt, or server module appears in frontend output.
-- [ ] T128 Add `scripts/verify-gemini.ts` and exact `verify:gemini` script (`node --env-file=.env --import tsx scripts/verify-gemini.ts`) before the offline gate; keep it undiscovered and unexecuted by `npm test`, build, typecheck, and smoke, and excluded from production emit.
-- [ ] T129 Add a no-network missing-configuration test/dry path proving sanitized `SKIPPED` and zero calls; ensure `scripts/verify-gemini.ts` is included by `tsconfig.server.json`, then run its focused test plus typecheck and applicable build before Phase 13.
+- [x] T120 Add fake-backed frontend/backend success integration coverage for exact request → exact HTTP 200 advice → rendered success state.
+- [x] T121 Add invalid structural and semantic integration cases → exact HTTP 400 and `providerCallCount === 0`.
+- [x] T122 Add permanent provider failure → exact HTTP 503 and safe UI message.
+- [x] T123 Add shared-deadline timeout → exact HTTP 503 using fake time; no real 15-second sleep.
+- [x] T124 Add malformed output, extra field, and invalid category → exact HTTP 503 and no malformed data rendered.
+- [x] T125 Add transient-then-success and twice-transient integration cases → no more than 2 calls; add non-retryable → exactly 1 call.
+- [x] T126 Add concurrent frontend click and restart-during-pending integration coverage; assert one in-flight request and stale result rejection.
+- [x] T127 Add a browser-facing artifact/import test or build inspection asserting no `@google/genai`, `GEMINI_API_KEY`, configured key value, provider prompt, or server module appears in frontend output.
+- [x] T128 Add `scripts/verify-gemini.ts` and exact `verify:gemini` script (`node --env-file=.env --import tsx scripts/verify-gemini.ts`) before the offline gate; keep it undiscovered and unexecuted by `npm test`, build, typecheck, and smoke, and excluded from production emit.
+- [x] T129 Add a no-network missing-configuration test/dry path proving sanitized `SKIPPED` and zero calls; ensure `scripts/verify-gemini.ts` is included by `tsconfig.server.json`, then run its focused test plus typecheck and applicable build before Phase 13.
 
 **Checkpoint**: A1–A7 and stale-response/security boundaries are proven offline.
 
@@ -274,16 +274,16 @@ The SDK compatibility research task may start earlier, but no live adapter or ca
 
 **Purpose**: Require all deterministic checks to pass before live validation.
 
-- [ ] T130 Run `npm test`; record exact test/file counts and failures or success.
-- [ ] T131 Run `npm run smoke`; record exact result and environment limitations.
-- [ ] T132 [P] Run `npm run typecheck`; record exact result.
-- [ ] T133 [P] Run `npm run build`; record exact result and output locations.
-- [ ] T134 Run `npm test -- src/config.test.ts src/game.test.ts src/input.test.ts`; record the focused Week03 regression.
-- [ ] T135 Run `npm test -- evals/week3-formal.test.ts`; record the Week03 formal regression without modifying its tests.
-- [ ] T136 Run `npm test -- evals/week3-holdout.test.ts`; record the Week03 holdout regression without tuning against it.
-- [ ] T137 Inspect the production frontend bundle for backend-only identifiers, SDK code, provider model configuration, and any real secret value; record the exact search and result.
-- [ ] T138 Fix only actual Core failures, rerun the affected focused check, then repeat the relevant regression command.
-- [ ] T139 Gate: do not proceed to a live provider call unless all applicable fake/offline checks are green; otherwise record the blocker and stop.
+- [x] T130 Run `npm test`; record exact test/file counts and failures or success.
+- [x] T131 Run `npm run smoke`; record exact result and environment limitations.
+- [x] T132 [P] Run `npm run typecheck`; record exact result.
+- [x] T133 [P] Run `npm run build`; record exact result and output locations.
+- [x] T134 Run `npm test -- src/config.test.ts src/game.test.ts src/input.test.ts`; record the focused Week03 regression.
+- [x] T135 Run `npm test -- evals/week3-formal.test.ts`; record the Week03 formal regression without modifying its tests.
+- [x] T136 Run `npm test -- evals/week3-holdout.test.ts`; record the Week03 holdout regression without tuning against it.
+- [x] T137 Inspect the production frontend bundle for backend-only identifiers, SDK code, provider model configuration, and any real secret value; record the exact search and result.
+- [x] T138 Fix only actual Core failures, rerun the affected focused check, then repeat the relevant regression command.
+- [x] T139 Gate: do not proceed to a live provider call unless all applicable fake/offline checks are green; otherwise record the blocker and stop.
 
 **Checkpoint**: Offline Core is green and eligible for one limited live check.
 
@@ -293,12 +293,12 @@ The SDK compatibility research task may start earlier, but no live adapter or ca
 
 **Purpose**: Verify the real adapter once without contaminating routine tests.
 
-- [ ] T140 Confirm T128–T129 are complete and the separate live command still uses the same prompt adapter and runtime `AiAdvice` validator; make no network call in this task.
-- [ ] T141 Confirm explicit live execution authorization and locally supplied backend-only `GEMINI_API_KEY`/`GEMINI_MODEL`; absent authorization or configuration remains an honest sanitized `SKIPPED` with zero calls.
-- [ ] T142 Confirm the verified script is fixed to one valid `GameSummary` and at most one live `GeminiAiAdviceProvider` call; do not change behavior after the offline-green gate.
-- [ ] T143 Reconfirm from the pre-live tests that output is limited to provider, model, timestamp, latency, sanitized status, attempt count, and optional safe token totals, with no key, prompt, raw payload, or stack trace.
-- [ ] T144 Only when explicitly authorized and local credentials/network are available, run `npm run verify:gemini` once and record the actual result; otherwise record `SKIPPED` with the factual reason.
-- [ ] T145 Do not retry the manual live verification merely to obtain a desired result; diagnose through fake/adapter tests first.
+- [x] T140 Confirm T128–T129 are complete and the separate live command still uses the same prompt adapter and runtime `AiAdvice` validator; make no network call in this task.
+- [x] T141 Confirm explicit live execution authorization and locally supplied backend-only `GEMINI_API_KEY`/`GEMINI_MODEL`; absent authorization or configuration remains an honest sanitized `SKIPPED` with zero calls.
+- [x] T142 Confirm the verified script is fixed to one valid `GameSummary` and at most one live `GeminiAiAdviceProvider` call; do not change behavior after the offline-green gate.
+- [x] T143 Reconfirm from the pre-live tests that output is limited to provider, model, timestamp, latency, sanitized status, attempt count, and optional safe token totals, with no key, prompt, raw payload, or stack trace.
+- [x] T144 Only when explicitly authorized and local credentials/network are available, run `npm run verify:gemini` once and record the actual result; otherwise record `SKIPPED` with the factual reason.
+- [x] T145 Do not retry the manual live verification merely to obtain a desired result; diagnose through fake/adapter tests first.
 
 **Checkpoint**: Live status is honestly recorded as pass, fail, or skipped.
 
@@ -308,16 +308,16 @@ The SDK compatibility research task may start earlier, but no live adapter or ca
 
 **Purpose**: Produce one reproducible Week04 evidence trail without duplicating the spec/plan.
 
-- [ ] T150 Review/finalize the versioned prompt comments/documentation in `server/ai/prompt.ts`; do not copy the internal prompt into public evidence.
-- [ ] T151 Reconcile `contracts/openapi.yaml`, `contracts/provider.md`, and actual implementation; update planning artifacts only where implementation-compatible technical details were resolved.
-- [ ] T152 Add the final AI evaluation matrix to one Week04 evidence artifact, covering success, invalid structural/semantic input with zero calls, provider failure, timeout, malformed/extra output, retry counts, concurrency, and stale response.
-- [ ] T153 Create `docs/EVIDENCE_W04.md` with actual commands/results and links to existing SpecKit contracts rather than duplicating them.
-- [ ] T154 Add the small architecture diagram `Frontend -> TypeScript Backend -> AiAdviceProvider -> Gemini` and identify the fake test branch.
-- [ ] T155 Document the backend-only secret boundary, `.env` ignore proof, bundle scan, configured provider/model, and absence of frontend SDK/configuration.
-- [ ] T156 Record actual offline verification from T130–T138, including any skipped/non-applicable check or environment limitation.
-- [ ] T157 Record T144 live evidence only if actually run; otherwise record `SKIPPED` without fabrication.
-- [ ] T158 Document known limitations: external provider availability, client abort not guaranteeing provider-side cancellation/billing, no authentication/rate limiting/deployment in Core, and model availability controlled by configuration.
-- [ ] T159 Record both team members' contributions only if required by the submission and factually supported; do not infer participation.
+- [x] T150 Review/finalize the versioned prompt comments/documentation in `server/ai/prompt.ts`; do not copy the internal prompt into public evidence.
+- [x] T151 Reconcile `contracts/openapi.yaml`, `contracts/provider.md`, and actual implementation; update planning artifacts only where implementation-compatible technical details were resolved.
+- [x] T152 Add the final AI evaluation matrix to one Week04 evidence artifact, covering success, invalid structural/semantic input with zero calls, provider failure, timeout, malformed/extra output, retry counts, concurrency, and stale response.
+- [x] T153 Create `docs/EVIDENCE_W04.md` with actual commands/results and links to existing SpecKit contracts rather than duplicating them.
+- [x] T154 Add the small architecture diagram `Frontend -> TypeScript Backend -> AiAdviceProvider -> Gemini` and identify the fake test branch.
+- [x] T155 Document the backend-only secret boundary, `.env` ignore proof, bundle scan, configured provider/model, and absence of frontend SDK/configuration.
+- [x] T156 Record actual offline verification from T130–T138, including any skipped/non-applicable check or environment limitation.
+- [x] T157 Record T144 live evidence only if actually run; otherwise record `SKIPPED` without fabrication.
+- [x] T158 Document known limitations: external provider availability, client abort not guaranteeing provider-side cancellation/billing, no authentication/rate limiting/deployment in Core, and model availability controlled by configuration.
+- [x] T159 Record both team members' contributions only if required by the submission and factually supported; do not infer participation.
 
 **Checkpoint**: Evidence reproduces claims without secrets or duplicate formality documents.
 
@@ -327,14 +327,14 @@ The SDK compatibility research task may start earlier, but no live adapter or ca
 
 **Purpose**: Finish with a clean, secret-free, regression-safe Core implementation.
 
-- [ ] T160 Search tracked and untracked project source/docs/tests/scripts/screenshots/logs for credential patterns and accidental real secrets; do not print secret values into evidence or terminal capture.
-- [ ] T161 Verify `.env` and `.env.*` are ignored and untracked, while `.env.example` is tracked with empty placeholders only.
-- [ ] T162 Verify the API key, internal prompt, raw provider payload, stack traces, and provider internals appear in no frontend bundle, public response, documentation evidence, fixture, screenshot, or committed log.
-- [ ] T163 Inspect `git status`, `git diff --stat`, and the complete diff; confirm every changed file belongs to the approved feature and no Week03 historical artifact was rewritten.
-- [ ] T164 Re-run the complete verification sequence from Phase 13 after final documentation/configuration changes; record final results rather than reusing earlier output.
-- [ ] T165 Compare the implementation against every Week04 MUST/FR/SC item and A1–A7 in `spec.md`; list any unmet item as a blocker rather than calling Core complete.
-- [ ] T166 Confirm no Stretch item, second endpoint/provider/model fallback, database, authentication, deployment, streaming, agent, dashboard, or game-physics redesign was added.
-- [ ] T167 Stop after Core completion and hand off the final behavior, files, commands/results, live status, risks, and limitations; do not begin Stretch work automatically.
+- [x] T160 Search tracked and untracked project source/docs/tests/scripts/screenshots/logs for credential patterns and accidental real secrets; do not print secret values into evidence or terminal capture.
+- [x] T161 Verify `.env` and `.env.*` are ignored and untracked, while `.env.example` is tracked with empty placeholders only.
+- [x] T162 Verify the API key, internal prompt, raw provider payload, stack traces, and provider internals appear in no frontend bundle, public response, documentation evidence, fixture, screenshot, or committed log.
+- [x] T163 Inspect `git status`, `git diff --stat`, and the complete diff; confirm every changed file belongs to the approved feature and no Week03 historical artifact was rewritten.
+- [x] T164 Re-run the complete verification sequence from Phase 13 after final documentation/configuration changes; record final results rather than reusing earlier output.
+- [x] T165 Compare the implementation against every Week04 MUST/FR/SC item and A1–A7 in `spec.md`; list any unmet item as a blocker rather than calling Core complete.
+- [x] T166 Confirm no Stretch item, second endpoint/provider/model fallback, database, authentication, deployment, streaming, agent, dashboard, or game-physics redesign was added.
+- [x] T167 Stop after Core completion and hand off the final behavior, files, commands/results, live status, risks, and limitations; do not begin Stretch work automatically.
 
 ## Parallel execution guidance
 

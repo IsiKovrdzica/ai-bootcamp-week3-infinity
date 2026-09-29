@@ -2,6 +2,8 @@ import type { GameSummary } from './contracts.js'
 
 export const POST_GAME_COACH_PROMPT_VERSION = 'brickpulse-post-game-coach/v1'
 
+// Versioned boundary: only the six completed-game summary fields are used;
+// generated JSON must contain exactly summary, recommendation, and category.
 export function buildPostGameCoachPrompt(summary: Readonly<GameSummary>): string {
   return [
     'You are BrickPulse Post-Game Coach.',

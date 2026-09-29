@@ -1,5 +1,5 @@
-import type { AiAdvice, GameSummary } from './contracts'
-import type { AdviceTransport } from './api-client'
+import type { AiAdvice, GameSummary } from './contracts.js'
+import type { AdviceTransport } from './api-client.js'
 
 export type CoachState =
   | { kind: 'hidden' }
@@ -45,7 +45,7 @@ export class CoachController {
     this.inFlight = controller
     this.setState({ kind: 'pending' })
 
-    let pending: Promise<import('./api-client').AdviceTransportResult>
+    let pending: Promise<import('./api-client.js').AdviceTransportResult>
     try {
       pending = this.options.transport(this.summary, { signal: controller.signal })
     } catch {
@@ -76,7 +76,7 @@ export class CoachController {
   private settle(
     sessionId: number,
     requestId: number,
-    result: import('./api-client').AdviceTransportResult,
+    result: import('./api-client.js').AdviceTransportResult,
   ): void {
     if (sessionId !== this.sessionValue || requestId !== this.requestId) return
     this.inFlight = undefined

@@ -1,4 +1,4 @@
-import type { AiAdvice, GameSummary } from './contracts'
+import type { AiAdvice, GameSummary } from './contracts.js'
 
 export type BrowserFetch = (
   input: RequestInfo | URL,

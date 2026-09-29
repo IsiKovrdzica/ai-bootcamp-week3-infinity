@@ -7,6 +7,8 @@
     "dev": "vite",
     "test": "vitest run",
     "smoke": "node scripts/smoke.mjs",
+    "check:frontend-boundary": "node scripts/check-frontend-boundary.mjs",
+    "verify:gemini": "node --env-file=.env --import tsx scripts/verify-gemini.ts",
     "typecheck": "tsc --noEmit && tsc -p tsconfig.server.json",
     "build": "tsc --noEmit && tsc -p tsconfig.server.json && vite build && tsc -p tsconfig.server.build.json",
     "preview": "vite preview",
