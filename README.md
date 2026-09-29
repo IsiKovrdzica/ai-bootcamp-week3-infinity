@@ -77,6 +77,18 @@ Controlled live Gemini checks are separate manual actions that require `GEMINI_A
 
 The smoke command uses an installed system Chrome/Chromium when available; otherwise install Playwright's Chromium once with `npx playwright install chromium`. The temporary automation server stops when the command finishes. Use `npm run dev` for manual play. Additional manual scenarios are documented in [`docs/BROWSER_SMOKE_TEST.md`](docs/BROWSER_SMOKE_TEST.md).
 
+### Verification boundary: offline versus live provider evidence
+
+Deterministic/offline verification consists of the documented final `npm test`
+count, smoke, typecheck, build, frontend-boundary check, and the documented
+formal and holdout evaluations. These checks use the fake-first boundary and
+do not establish external Gemini availability. Live-provider evidence is
+separate: the original controlled primary verification failed safely; the
+fallback model passed its separate capability check; and a later manual
+browser `ASK AI COACH` run rendered valid advice. See
+[`docs/EVIDENCE_W04.md`](docs/EVIDENCE_W04.md) for the bounded factual record
+and its browser evidence artifact.
+
 ## Project documentation
 
 ### Week03 baseline

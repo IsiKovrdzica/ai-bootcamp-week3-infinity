@@ -157,6 +157,23 @@ The one permitted live verification did not produce a validated successful resul
 
 Separate from both controlled checks above, manual `ASK AI COACH` use repeatedly produced sanitized primary-model HTTP 404 observations for `gemini-2.5-flash-lite`; frontend/proxy/backend connectivity remained functional and the public endpoint returned its safe HTTP 503 envelope. Because the fixed `gemini-3.5-flash-lite` model had already passed its separate one-call capability check, a plain primary-model/resource 404 is normalized as `provider_unavailable` and receives the bounded fallback slot. Explicit configuration/unsupported-model 404 remains terminal, and this does not permit arbitrary 4xx fallback. No live verification command was rerun for this observation or correction.
 
+## Successful manual browser AI Coach run
+
+After the bounded 404 fallback policy was implemented, a completed game was
+followed by an `ASK AI COACH` action in the browser. The browser-to-backend-to-
+provider flow completed successfully and a valid `AiAdvice` was rendered in
+the UI. [`docs/screenshots/ai-coach.png`](screenshots/ai-coach.png) is the
+redacted visual evidence of that browser result.
+
+The screenshot visually documents the completed-game UI and rendered advice;
+the bounded fallback policy and internal attempt behavior remain documented
+application behavior rather than claims proven by the image alone. This later
+manual browser success is separate from the original controlled primary-model
+verification, which remains `gemini-2.5-flash-lite` `FAILED` /
+`providerCallCount: 1` / `adviceValid: false` / no retry, and the separate
+fallback capability check, which remains `gemini-3.5-flash-lite` `PASSED` /
+`providerCallCount: 1` / `adviceValid: true` / no retry.
+
 ## Secret and frontend bundle boundary
 
 - `GEMINI_API_KEY` and `GEMINI_MODEL` are backend-only configuration.
