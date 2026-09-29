@@ -98,6 +98,55 @@
 - `render.ts` only reads game state and draws Canvas content.
 - The existing `.gitignore` ignores `node_modules/` and `dist/`, but does not yet ignore `.env`; implementation must add `.env` and `.env.*` with an explicit `!.env.example` exception.
 
-## Open technical gate
+## `@google/genai` 2.24.0 compatibility gate results
 
-There is no unresolved product question. The only technical gate is SDK-version verification for retry suppression, structured output, and abort wiring. It must be closed before the Gemini adapter is accepted, and it does not alter the architecture or contracts.
+**Pinned package inspected**: `@google/genai` 2.24.0, including its published
+`dist/genai.d.ts` declarations and `dist/node/index.mjs` implementation. The
+package remains a backend-only runtime dependency. No live Gemini request was
+made during this gate.
+
+**Retry semantics**: `HttpRetryOptions.attempts` counts the initial transport
+request. Values `0` and `1` mean no retry; when retry options are present but
+`attempts` is omitted, the default is 5 total attempts. The 2.24.0 source clamps
+the configured value to at least 1 and passes `attempts - 1` to `p-retry`.
+Without a `retryOptions` object, the source invokes the transport once directly.
+The offline compatibility test supplies `retryOptions: { attempts: 1 }`, returns
+a retryable HTTP 503 from an injected fetch, and observes exactly one fetch.
+
+**Transport timeout semantics**: `HttpOptions.timeout` is milliseconds and is a
+per-transport-attempt timeout, not a shared retry budget. The implementation
+creates a fresh attempt signal for every fetch and combines the timeout with the
+caller's signal. BrickPulse therefore continues to own its shared 15-second
+deadline in the advice service and does not use SDK timeout as a replacement.
+
+**Cancellation**: `GenerateContentConfig.abortSignal` is forwarded through
+`generateContent` to the request client. The client derives the transport signal
+from that caller signal. An offline injected-fetch test observes the transport
+signal becoming aborted when the supplied controller is aborted. SDK docs also
+state that this is client-side cancellation and may not cancel server-side work,
+so the existing local settle/deadline guard remains required.
+
+**Structured JSON**: `GenerateContentConfig` supports
+`responseMimeType: 'application/json'` and `responseJsonSchema`. The published
+type accepts JSON Schema as `unknown`, while the SDK request transformer emits
+both values under `generationConfig`. The offline test proves this exact request
+shape. Provider output still crosses the application boundary as unknown text
+or parsed JSON and remains subject to BrickPulse's handwritten validator.
+
+**Response and usage metadata**: `GenerateContentResponse.text` exposes the
+first candidate's generated text. `usageMetadata` exposes numeric
+`promptTokenCount`, `candidatesTokenCount`, and `totalTokenCount`, among other
+breakdowns. The offline test proves text and those numeric counts survive SDK
+response conversion. Only safe input/output token counts may be projected into
+`AiUsageEvent`; raw request/response payloads are never logged.
+
+**Gate decision**: Use the official SDK adapter in the later adapter phase,
+configured with `retryOptions: { attempts: 1 }` on every `generateContent` call.
+Direct backend fetch is not selected because one SDK method call was proven to
+equal one transport attempt under that configuration.
+
+**Sources**:
+
+- [Pinned 2.24.0 `HttpRetryOptions` documentation](https://googleapis.github.io/js-genai/release_docs/interfaces/types.HttpRetryOptions.html)
+- [SDK `GenerateContentConfig` documentation](https://googleapis.github.io/js-genai/release_docs/interfaces/types.GenerateContentConfig.html)
+- [Gemini structured outputs documentation](https://ai.google.dev/gemini-api/docs/structured-output)

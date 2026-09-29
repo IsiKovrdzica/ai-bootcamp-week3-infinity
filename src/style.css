@@ -53,6 +53,48 @@ canvas {
   font-size: clamp(0.75rem, 2vw, 0.9rem);
 }
 
+.ai-coach {
+  margin: 14px 0 0;
+  padding: 12px;
+  border: 1px solid #364065;
+  border-radius: 4px;
+  background: #101426;
+  text-align: left;
+}
+
+.ai-coach h2 {
+  margin: 0 0 10px;
+  color: #66f2d5;
+  font-size: 0.9rem;
+  letter-spacing: 0.08em;
+}
+
+.ai-coach button {
+  border: 1px solid #66f2d5;
+  border-radius: 3px;
+  padding: 8px 10px;
+  color: #090b14;
+  background: #66f2d5;
+  font: inherit;
+  cursor: pointer;
+}
+
+.ai-coach button:disabled {
+  cursor: wait;
+  opacity: 0.55;
+}
+
+.ai-coach-output p {
+  min-height: 1.2em;
+  margin: 8px 0 0;
+  color: #d9def8;
+  font-size: 0.8rem;
+}
+
+#ai-coach-status {
+  color: #ffcf66;
+}
+
 .error {
   min-height: 1.2em;
   color: #ff5c8a;

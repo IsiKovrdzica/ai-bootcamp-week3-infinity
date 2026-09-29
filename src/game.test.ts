@@ -19,6 +19,7 @@ describe('game creation and control', () => {
     expect(result.state.status).toBe('READY')
     expect(result.state.score).toBe(0)
     expect(result.state.lives).toBe(3)
+    expect(result.state.durationSeconds).toBe(0)
     expect(result.state.bricks).toHaveLength(32)
     expect(result.state.bricks.every((brick) => brick.alive)).toBe(true)
     expect(result.state.ball.vx).toBe(0)
@@ -59,6 +60,34 @@ describe('game creation and control', () => {
     expect(state.paddle.x).toBe(FIELD_WIDTH - PADDLE_WIDTH)
     expect(state.ball.x - state.paddle.x).toBe(initialBallOffset)
   })
+
+  it('does not count READY time and accumulates finite non-negative RUNNING slices', () => {
+    const state = readyState()
+
+    updateGame(state, idleInput, 2)
+    expect(state.durationSeconds).toBe(0)
+
+    updateGame(state, { move: 0, start: true }, 3)
+    expect(state.status).toBe('RUNNING')
+    expect(state.durationSeconds).toBe(0)
+
+    updateGame(state, idleInput, 0.1)
+    updateGame(state, idleInput, 0.2)
+    expect(state.durationSeconds).toBeCloseTo(0.3)
+  })
+
+  it.each([-0.25, Number.NaN])(
+    'keeps duration finite and non-negative for invalid delta %s without redefining physics handling',
+    (deltaSeconds) => {
+      const state = runningState()
+
+      updateGame(state, idleInput, deltaSeconds)
+
+      expect(state.durationSeconds).toBe(0)
+      expect(Number.isFinite(state.durationSeconds)).toBe(true)
+      expect(state.durationSeconds).toBeGreaterThanOrEqual(0)
+    },
+  )
 })
 
 describe('collisions and scoring', () => {
@@ -221,16 +250,74 @@ describe('life and terminal transitions', () => {
     state.bricks.forEach((brick) => {
       brick.alive = false
     })
+    state.durationSeconds = 12.5
     const frozenBall = { ...state.ball }
 
     updateGame(state, idleInput, 1)
     expect(state.ball).toEqual(frozenBall)
+    expect(state.durationSeconds).toBe(12.5)
 
     updateGame(state, { move: 0, start: true }, 0)
     expect(state.status).toBe('READY')
     expect(state.score).toBe(0)
     expect(state.lives).toBe(3)
     expect(state.bricks.every((brick) => brick.alive)).toBe(true)
+    expect(state.durationSeconds).toBe(0)
+  })
+
+  it('counts the RUNNING slice that loses a non-final life and preserves duration in READY', () => {
+    const state = runningState()
+    state.ball.y = FIELD_HEIGHT + BALL_RADIUS + 10
+    state.ball.vy = 100
+
+    updateGame(state, idleInput, 0.02)
+
+    expect(state.status).toBe('READY')
+    expect(state.durationSeconds).toBeCloseTo(0.02)
+    updateGame(state, idleInput, 3)
+    expect(state.durationSeconds).toBeCloseTo(0.02)
+  })
+
+  it.each(['WON', 'GAME_OVER'] as const)(
+    'does not count time after entering terminal status %s',
+    (status) => {
+      const state = runningState()
+      state.durationSeconds = 1.25
+      state.status = status
+
+      updateGame(state, idleInput, 10)
+
+      expect(state.durationSeconds).toBe(1.25)
+    },
+  )
+
+  it('counts the RUNNING slice that produces WON', () => {
+    const state = runningState()
+    state.bricks.forEach((brick) => {
+      brick.alive = false
+    })
+    const brick = state.bricks[0]
+    brick.alive = true
+    state.ball.x = brick.x + brick.width / 2
+    state.ball.y = brick.y - BALL_RADIUS - 1
+    state.ball.vx = 0
+    state.ball.vy = 100
+
+    updateGame(state, idleInput, 0.02)
+
+    expect(state.status).toBe('WON')
+    expect(state.durationSeconds).toBeCloseTo(0.02)
+  })
+
+  it('counts the RUNNING slice that produces GAME_OVER', () => {
+    const state = runningState()
+    state.lives = 1
+    state.ball.y = FIELD_HEIGHT + BALL_RADIUS + 10
+
+    updateGame(state, idleInput, 0.02)
+
+    expect(state.status).toBe('GAME_OVER')
+    expect(state.durationSeconds).toBeCloseTo(0.02)
   })
 })
 

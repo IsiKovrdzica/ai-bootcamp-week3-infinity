@@ -5,6 +5,7 @@ export type AiUsageEvent = {
   latencyMs: number
   outcome: 'success' | 'failure' | 'timeout'
   attemptCount: 0 | 1 | 2
+  tokenUsage?: { input?: number; output?: number }
 }
 export type AiUsageSink = (event: AiUsageEvent) => void
 export const noOpAiUsageSink: AiUsageSink = () => {}

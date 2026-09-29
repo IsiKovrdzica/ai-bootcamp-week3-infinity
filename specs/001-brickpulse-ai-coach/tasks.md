@@ -166,14 +166,14 @@ The SDK compatibility research task may start earlier, but no live adapter or ca
 
 **Purpose**: Close the SDK/retry risk before any Gemini adapter is accepted.
 
-- [ ] T070 Add tests for an injected `AiUsageEvent` sink in `server/ai/usage-log.test.ts`: provider, model, timestamp, latency, outcome, attempt count, and optional safe token counts only.
-- [ ] T071 Implement an ephemeral injected sink/sanitized structured logger in `server/ai/usage-log.ts`; add no database, file history, dashboard, API endpoint, raw prompt/payload, key, or stack trace.
-- [ ] T072 Integrate the sink with the advice service and verify invalid local input records zero attempts without recording the submitted payload.
-- [ ] T073 Obtain explicit dependency approval for the exact pinned `@google/genai` version before modifying `package.json` or `package-lock.json`; stop if approval is not granted.
-- [ ] T074 After T073 approval, pin `@google/genai`, then inspect that pinned SDK version’s types/source and official docs for the exact structured JSON API, `AbortSignal` location, transport timeout semantics, and `retryOptions.attempts` semantics; record findings in `research.md` without copying secrets.
-- [ ] T075 Add a compile-only/provider-adapter spike or focused test proving SDK retry configuration is set to exactly 1 total transport attempt per `generateAdvice` call and the supplied abort signal reaches the request.
-- [ ] T076 Gate decision: if T075 cannot prove one SDK call equals one transport attempt, remove/avoid the SDK adapter and document direct backend `fetch` to the official Gemini REST endpoint as the selected implementation; do not silently accept nested retries.
-- [ ] T077 Confirm the selected adapter can request structured JSON and expose the returned text/JSON plus safely available usage metadata without logging raw payloads.
+- [x] T070 Add tests for an injected `AiUsageEvent` sink in `server/ai/usage-log.test.ts`: provider, model, timestamp, latency, outcome, attempt count, and optional safe token counts only.
+- [x] T071 Implement an ephemeral injected sink/sanitized structured logger in `server/ai/usage-log.ts`; add no database, file history, dashboard, API endpoint, raw prompt/payload, key, or stack trace.
+- [x] T072 Integrate the sink with the advice service and verify invalid local input records zero attempts without recording the submitted payload.
+- [x] T073 Obtain explicit dependency approval for the exact pinned `@google/genai` version before modifying `package.json` or `package-lock.json`; stop if approval is not granted.
+- [x] T074 After T073 approval, pin `@google/genai`, then inspect that pinned SDK version’s types/source and official docs for the exact structured JSON API, `AbortSignal` location, transport timeout semantics, and `retryOptions.attempts` semantics; record findings in `research.md` without copying secrets.
+- [x] T075 Add a compile-only/provider-adapter spike or focused test proving SDK retry configuration is set to exactly 1 total transport attempt per `generateAdvice` call and the supplied abort signal reaches the request.
+- [x] T076 Gate decision: if T075 cannot prove one SDK call equals one transport attempt, remove/avoid the SDK adapter and document direct backend `fetch` to the official Gemini REST endpoint as the selected implementation; do not silently accept nested retries.
+- [x] T077 Confirm the selected adapter can request structured JSON and expose the returned text/JSON plus safely available usage metadata without logging raw payloads.
 
 **Checkpoint**: Adapter mechanics are proven; no live call has occurred.
 
@@ -183,15 +183,15 @@ The SDK compatibility research task may start earlier, but no live adapter or ca
 
 **Purpose**: Add only data needed for the completed-game request.
 
-- [ ] T080 Re-inspect `src/game.ts` and `src/game.test.ts`; document the existing derivations for outcome, score, destroyed bricks, remaining lives, and lost lives in the test names/fixtures rather than adding mutable duplicates.
-- [ ] T081 [RED] Add tests in `src/game.test.ts` for `durationSeconds`: initial 0; no increase in `READY`; increase by processed `RUNNING` slices; no increase after `WON`/`GAME_OVER`; and negative or non-finite `deltaSeconds` cannot make telemetry negative or non-finite.
-- [ ] T082 [RED] Add duration tests proving preservation through non-final life loss/return to `READY` and reset through the existing full-restart path.
-- [ ] T083 [GREEN] Add only `durationSeconds` to `GameState` and `createInitialState`; increment it for each finite non-negative processed `RUNNING` slice, including the slice that produces a terminal/life-loss transition, while ignoring invalid deltas for telemetry accumulation only and leaving existing physics handling unchanged.
-- [ ] T084 Run focused game tests and confirm movement, sub-stepping, collision, scoring, lives, controls, and status transitions remain unchanged; then add a compile-valid no-behavior `src/ai/game-summary.ts` export with the planned terminal-summary signature before T085 RED.
-- [ ] T085 [RED] Add `src/ai/game-summary.test.ts` for exact `WON` summary derivation from terminal state without full `GameState` leakage.
-- [ ] T086 [RED] Add exact `GAME_OVER` summary derivation and invalid non-terminal-state rejection tests.
-- [ ] T087 [GREEN] Implement `src/ai/game-summary.ts` deriving score, non-alive brick count, current lives, `config.lives - lives`, existing terminal status, and duration.
-- [ ] T088 Run Phase 8 tests plus existing `src/game.test.ts`; confirm all summary outputs satisfy backend invariants.
+- [x] T080 Re-inspect `src/game.ts` and `src/game.test.ts`; document the existing derivations for outcome, score, destroyed bricks, remaining lives, and lost lives in the test names/fixtures rather than adding mutable duplicates.
+- [x] T081 [RED] Add tests in `src/game.test.ts` for `durationSeconds`: initial 0; no increase in `READY`; increase by processed `RUNNING` slices; no increase after `WON`/`GAME_OVER`; and negative or non-finite `deltaSeconds` cannot make telemetry negative or non-finite.
+- [x] T082 [RED] Add duration tests proving preservation through non-final life loss/return to `READY` and reset through the existing full-restart path.
+- [x] T083 [GREEN] Add only `durationSeconds` to `GameState` and `createInitialState`; increment it for each finite non-negative processed `RUNNING` slice, including the slice that produces a terminal/life-loss transition, while ignoring invalid deltas for telemetry accumulation only and leaving existing physics handling unchanged.
+- [x] T084 Run focused game tests and confirm movement, sub-stepping, collision, scoring, lives, controls, and status transitions remain unchanged; then add a compile-valid no-behavior `src/ai/game-summary.ts` export with the planned terminal-summary signature before T085 RED.
+- [x] T085 [RED] Add `src/ai/game-summary.test.ts` for exact `WON` summary derivation from terminal state without full `GameState` leakage.
+- [x] T086 [RED] Add exact `GAME_OVER` summary derivation and invalid non-terminal-state rejection tests.
+- [x] T087 [GREEN] Implement `src/ai/game-summary.ts` deriving score, non-alive brick count, current lives, `config.lives - lives`, existing terminal status, and duration.
+- [x] T088 Run Phase 8 tests plus existing `src/game.test.ts`; confirm all summary outputs satisfy backend invariants.
 
 **Checkpoint**: The browser can construct the six-field request with one new telemetry field only.
 
@@ -201,15 +201,15 @@ The SDK compatibility research task may start earlier, but no live adapter or ca
 
 **Purpose**: Implement browser reliability logic without DOM or provider coupling.
 
-- [ ] T089 Add compile-valid no-behavior exports for the injected browser transport in `src/ai/api-client.ts` and request-ownership seam in `src/ai/coach-controller.ts`; stubs must compile but fail the subsequent behavioral assertions.
-- [ ] T090 [RED] Add `src/ai/coach-controller.test.ts` for a relative `POST /api/ai/advice` transport, exact request body, exact 200 parsing, and exact safe 400/503 handling with injected fetch.
-- [ ] T091 Assert browser modules never import `server/**`, `@google/genai`, `GEMINI_API_KEY`, or `GEMINI_MODEL`.
-- [ ] T092 [GREEN] Implement the browser API client in `src/ai/api-client.ts`; send only `GameSummary` and convert all non-success/network failures to the stable safe UI failure.
-- [ ] T093 [RED] Add controller tests for `hidden → idle → pending → success/failure`, synchronous pending transition, and repeated explicit requests after settle.
-- [ ] T094 [RED] Add concurrent-click test proving a second click while pending creates no second fetch.
-- [ ] T095 [RED] Add restart-while-pending tests proving request abort is attempted, coach state clears, session generation increments, and a late old response cannot update the new game.
-- [ ] T096 [GREEN] Implement `src/ai/coach-controller.ts` with one in-flight request, per-game session/request identifiers, optional request `AbortController`, and injected view/transport callbacks.
-- [ ] T097 Run Phase 9 tests and confirm no DOM library, network, key, SDK, or server import is required.
+- [x] T089 Add compile-valid no-behavior exports for the injected browser transport in `src/ai/api-client.ts` and request-ownership seam in `src/ai/coach-controller.ts`; stubs must compile but fail the subsequent behavioral assertions.
+- [x] T090 [RED] Add `src/ai/coach-controller.test.ts` for a relative `POST /api/ai/advice` transport, exact request body, exact 200 parsing, and exact safe 400/503 handling with injected fetch.
+- [x] T091 Assert browser modules never import `server/**`, `@google/genai`, `GEMINI_API_KEY`, or `GEMINI_MODEL`.
+- [x] T092 [GREEN] Implement the browser API client in `src/ai/api-client.ts`; send only `GameSummary` and convert all non-success/network failures to the stable safe UI failure.
+- [x] T093 [RED] Add controller tests for `hidden → idle → pending → success/failure`, synchronous pending transition, and repeated explicit requests after settle.
+- [x] T094 [RED] Add concurrent-click test proving a second click while pending creates no second fetch.
+- [x] T095 [RED] Add restart-while-pending tests proving request abort is attempted, coach state clears, session generation increments, and a late old response cannot update the new game.
+- [x] T096 [GREEN] Implement `src/ai/coach-controller.ts` with one in-flight request, per-game session identifier, optional request `AbortController`, and injected view/transport callbacks.
+- [x] T097 Run Phase 9 tests and confirm no DOM library, network, key, SDK, or server import is required.
 
 **Checkpoint**: Browser request behavior is deterministic and stale-safe before UI wiring.
 
@@ -219,14 +219,14 @@ The SDK compatibility research task may start earlier, but no live adapter or ca
 
 **Purpose**: Attach the Core UI adjacent to the existing Canvas without changing Canvas rendering.
 
-- [ ] T100 Add the minimal coach section, `ASK AI COACH` button, status/output elements, and accessible live region adjacent to `#game` in `index.html`.
-- [ ] T101 Add minimal matching states/styles in `src/style.css`; do not redesign the game.
-- [ ] T102 Wire the controller in `src/main.ts`; show idle only for existing `WON`/`GAME_OVER`, keep it unavailable in `READY`/`RUNNING`, and never invoke automatically.
-- [ ] T103 Render pending as `ANALYZING...` with the button disabled; render exact summary, recommendation, and category on success.
-- [ ] T104 Render only `AI advice is temporarily unavailable. Please try again later.` on failure and re-enable explicit retry after settle.
-- [ ] T105 Detect the existing terminal-to-`READY` full restart in `src/main.ts`; clear/invalidate coach state while preserving Space restart and all other controls.
-- [ ] T106 Leave `src/render.ts` unchanged; if a change appears necessary, stop and re-evaluate the DOM attachment plan before editing it.
-- [ ] T107 Extend the browser smoke path or add a focused fake-backend smoke mode to verify terminal-only control, pending state, success/failure display, and restart usability without Gemini/network access.
+- [x] T100 Add the minimal coach section, `ASK AI COACH` button, status/output elements, and accessible live region adjacent to `#game` in `index.html`.
+- [x] T101 Add minimal matching states/styles in `src/style.css`; do not redesign the game.
+- [x] T102 Wire the controller in `src/main.ts`; show idle only for existing `WON`/`GAME_OVER`, keep it unavailable in `READY`/`RUNNING`, and never invoke automatically.
+- [x] T103 Render pending as `ANALYZING...` with the button disabled; render exact summary, recommendation, and category on success.
+- [x] T104 Render only `AI advice is temporarily unavailable. Please try again later.` on failure and re-enable explicit retry after settle.
+- [x] T105 Detect the existing terminal-to-`READY` full restart in `src/main.ts`; clear/invalidate coach state while preserving Space restart and all other controls.
+- [x] T106 Leave `src/render.ts` unchanged; if a change appears necessary, stop and re-evaluate the DOM attachment plan before editing it.
+- [x] T107 Extend the browser smoke path or add a focused fake-backend smoke mode to verify terminal-only control, pending state, success/failure display, and restart usability without Gemini/network access.
 
 **Checkpoint**: The complete user flow works against a controlled fake boundary; gameplay remains independent.
 
@@ -236,16 +236,16 @@ The SDK compatibility research task may start earlier, but no live adapter or ca
 
 **Purpose**: Add the sole live adapter only after all provider-independent Core behavior is green.
 
-- [ ] T110 Add `.env.example` containing exactly empty `GEMINI_API_KEY=` and `GEMINI_MODEL=` placeholders.
-- [ ] T111 Update `.gitignore` to ignore `.env` and `.env.*` while explicitly allowing `.env.example`; verify no existing environment file becomes tracked.
-- [ ] T112 Add backend environment parsing/validation in the server composition root; missing key/model is a non-retryable configuration failure mapped to the safe 503 response.
-- [ ] T113 Add a compile-valid no-behavior versioned prompt export `brickpulse-post-game-coach/v1` in `server/ai/prompt.ts` before prompt RED tests; include no real prompt construction yet.
-- [ ] T114 [RED] Add prompt unit tests requiring all six summary fields as data, no additional game state, prohibition of invented events, exact response schema/categories, and no secrets/tools/history.
-- [ ] T115 [GREEN] Implement the versioned prompt, then implement `GeminiAiAdviceProvider` in `server/ai/gemini-provider.ts` using the adapter selected at T076, configured model, structured JSON, shared abort signal, and exactly one transport attempt per provider method call.
-- [ ] T116 Parse provider output as `unknown` and return it to the existing application validator; do not cast or locally strip fields inside the adapter.
-- [ ] T117 Map Gemini network/status/auth/configuration/safety/cancellation failures to the closed internal categories without exposing raw errors.
-- [ ] T118 Add adapter tests with injected/mock transport proving minimum context, configured model use, structured-output settings, abort propagation, retry suppression, error classification, and no key/raw-payload logging.
-- [ ] T119 Wire `GeminiAiAdviceProvider` only in `server/index.ts`; keep tests injecting the fake and keep all browser imports provider-free.
+- [x] T110 Add `.env.example` containing exactly empty `GEMINI_API_KEY=` and `GEMINI_MODEL=` placeholders.
+- [x] T111 Update `.gitignore` to ignore `.env` and `.env.*` while explicitly allowing `.env.example`; verify no existing environment file becomes tracked.
+- [x] T112 Add backend environment parsing/validation in the server composition root; missing key/model is a non-retryable configuration failure mapped to the safe 503 response.
+- [x] T113 Add a compile-valid no-behavior versioned prompt export `brickpulse-post-game-coach/v1` in `server/ai/prompt.ts` before prompt RED tests; include no real prompt construction yet.
+- [x] T114 [RED] Add prompt unit tests requiring all six summary fields as data, no additional game state, prohibition of invented events, exact response schema/categories, and no secrets/tools/history.
+- [x] T115 [GREEN] Implement the versioned prompt, then implement `GeminiAiAdviceProvider` in `server/ai/gemini-provider.ts` using the adapter selected at T076, configured model, structured JSON, shared abort signal, and exactly one transport attempt per provider method call.
+- [x] T116 Parse provider output as `unknown` and return it to the existing application validator; do not cast or locally strip fields inside the adapter.
+- [x] T117 Map Gemini network/status/auth/configuration/safety/cancellation failures to the closed internal categories without exposing raw errors.
+- [x] T118 Add adapter tests with injected/mock transport proving minimum context, configured model use, structured-output settings, abort propagation, retry suppression, error classification, and no key/raw-payload logging.
+- [x] T119 Wire `GeminiAiAdviceProvider` only in `server/index.ts`; keep tests injecting the fake and keep all browser imports provider-free.
 
 **Checkpoint**: Gemini is isolated and test-covered; still no live call.
 

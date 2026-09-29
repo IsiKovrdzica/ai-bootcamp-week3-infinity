@@ -5,7 +5,7 @@ import { chromium } from 'playwright'
 const host = process.env.SMOKE_HOST ?? '127.0.0.1'
 const port = process.env.SMOKE_PORT ?? '4173'
 const baseUrl = (process.env.SMOKE_URL ?? `http://${host}:${port}`).replace(/\/+$/, '')
-const server = spawn(process.execPath, ['node_modules/vite/bin/vite.js', '--host', host, '--port', port], {
+const server = spawn(process.execPath, ['node_modules/vite/bin/vite.js', '--mode', 'smoke', '--host', host, '--port', port], {
   stdio: ['ignore', 'pipe', 'pipe'],
 })
 
@@ -29,6 +29,7 @@ const checks = [
     const ball = await findBallCenter(page)
     assert(ball !== null, 'READY ball was not rendered')
     assert(await hasPaddleAt(page, 320), 'READY paddle was not rendered at the initial position')
+    assert(await page.locator('#ai-coach').isHidden(), 'coach must be unavailable during READY')
   }],
   ['Space starts the ball', async (page) => {
     const before = await findBallCenter(page)
@@ -47,6 +48,74 @@ const checks = [
       const current = window.__brickPulsePaddleCenter?.()
       return current !== null && current > previousX + 20
     }, before, { timeout: 2000 })
+  }],
+  ['AI coach stays explicit, renders safe states, and clears on restart', async (page) => {
+    let requestCount = 0
+    const queuedResponses = [
+      {
+        status: 200,
+        body: {
+          summary: 'You completed the wall.',
+          recommendation: 'Track the next return earlier.',
+          category: 'consistency',
+        },
+      },
+      { status: 503, body: { error: { code: 'AI_ADVICE_UNAVAILABLE' } } },
+    ]
+    await page.route('**/api/ai/advice', async (route) => {
+      requestCount += 1
+      const response = queuedResponses.shift()
+      assert(response !== undefined, 'unexpected additional advice request')
+      await delay(100)
+      await route.fulfill({
+        status: response.status,
+        contentType: 'application/json',
+        body: JSON.stringify(response.body),
+      })
+    })
+
+    const coach = page.locator('#ai-coach')
+    const button = page.locator('#ask-ai-coach')
+    assert(await coach.isHidden(), 'coach must be unavailable during RUNNING')
+
+    await page.evaluate(() => window.__brickPulseSmoke?.complete('WON'))
+    await coach.waitFor({ state: 'visible', timeout: 1000 })
+    assert(await button.isEnabled(), 'coach button must be enabled while idle')
+    assert(requestCount === 0, 'terminal transition must not request advice automatically')
+
+    await button.click()
+    await page.waitForFunction(() => document.querySelector('#ai-coach-status')?.textContent === 'ANALYZING...')
+    assert(await button.isDisabled(), 'coach button must be disabled while pending')
+    await page.waitForFunction(() => document.querySelector('#ai-coach-summary')?.textContent === 'You completed the wall.')
+    assert(await button.isEnabled(), 'coach button must re-enable after success')
+    assert((await page.locator('#ai-coach-recommendation').textContent()) === 'Track the next return earlier.', 'recommendation must render')
+    assert((await page.locator('#ai-coach-category').textContent()) === 'consistency', 'category must render')
+
+    await button.click()
+    await page.waitForFunction(() => document.querySelector('#ai-coach-status')?.textContent === 'AI advice is temporarily unavailable. Please try again later.')
+    assert(await button.isEnabled(), 'coach button must re-enable after safe failure')
+    assert((await page.locator('#ai-coach-summary').textContent()) === '', 'failure must clear old advice')
+    assert((await page.locator('#ai-coach-recommendation').textContent()) === '', 'failure must clear old recommendation')
+    assert((await page.locator('#ai-coach-category').textContent()) === '', 'failure must clear old category')
+
+    await page.evaluate(() => window.__brickPulseSmoke?.restart())
+    assert(await coach.isHidden(), 'restart must hide coach output')
+    assert((await page.locator('#ai-coach-status').textContent()) === '', 'restart must clear status')
+    assert(requestCount === 2, 'only explicit clicks may request advice')
+
+    await page.evaluate(() => window.__brickPulseSmoke?.complete('GAME_OVER'))
+    await coach.waitFor({ state: 'visible', timeout: 1000 })
+    assert(await button.isEnabled(), 'coach must be idle after GAME_OVER')
+    assert(requestCount === 2, 'GAME_OVER transition must not request advice automatically')
+    await page.evaluate(() => window.__brickPulseSmoke?.restart())
+    assert(await coach.isHidden(), 'GAME_OVER restart must hide coach output')
+
+    const before = await findBallCenter(page)
+    await page.keyboard.press('Space')
+    await page.waitForFunction((previous) => {
+      const current = window.__brickPulseBallCenter?.()
+      return current && Math.hypot(current.x - previous.x, current.y - previous.y) > 8
+    }, before, { timeout: 3000 })
   }],
   ['browser has no uncaught errors', async (_page, errors) => {
     assert(errors.length === 0, errors.join('\n'))

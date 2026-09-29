@@ -21,6 +21,16 @@
         BrickPulse requires a browser with Canvas support.
       </canvas>
       <p class="controls">Move: ← → or A D · Start / restart: Space</p>
+      <section id="ai-coach" class="ai-coach" aria-labelledby="ai-coach-title" hidden>
+        <h2 id="ai-coach-title">AI Coach</h2>
+        <button id="ask-ai-coach" type="button">ASK AI COACH</button>
+        <div id="ai-coach-output" class="ai-coach-output" aria-live="polite" aria-atomic="true">
+          <p id="ai-coach-status" role="status"></p>
+          <p id="ai-coach-summary"></p>
+          <p id="ai-coach-recommendation"></p>
+          <p id="ai-coach-category"></p>
+        </div>
+      </section>
       <p id="error" class="error" role="alert"></p>
     </main>
     <script type="module" src="/src/main.ts"></script>

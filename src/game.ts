@@ -49,6 +49,7 @@ export type GameState = {
   status: GameStatus
   score: number
   lives: number
+  durationSeconds: number
   paddle: Paddle
   ball: Ball
   bricks: Brick[]
@@ -89,6 +90,10 @@ export function updateGame(
     return
   }
 
+  if (Number.isFinite(deltaSeconds) && deltaSeconds >= 0) {
+    state.durationSeconds += deltaSeconds
+  }
+
   const stepCount =
     deltaSeconds > MAX_SIMULATION_STEP
       ? Math.ceil(deltaSeconds / MAX_SIMULATION_STEP)
@@ -117,6 +122,7 @@ function createInitialState(config: GameConfig): GameState {
     status: 'READY',
     score: 0,
     lives: config.lives,
+    durationSeconds: 0,
     paddle,
     ball: {
       x: 0,
