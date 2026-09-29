@@ -47,8 +47,16 @@ and [provider contract](../specs/001-brickpulse-ai-coach/contracts/provider.md).
 - Gemini adapter output crosses as `unknown` and is runtime-validated by the
   application before any public response.
 - The application owns one shared 15,000 ms deadline, at most two total
-  provider calls, and a 250 ms delay only for normalized transient failures.
+  provider calls, and one bounded 250 ms delay before either permitted second slot (same-primary retry or fixed fallback).
   The Gemini SDK is constrained to one transport attempt per provider call.
+
+Mentor reliability addendum: the same two-call boundary now selects the second
+slot by normalized failure class. Network/408/429 retry the primary model;
+500/502/503 provider-unavailable failures use the tested Gemini fallback
+`gemini-3.5-flash-lite`. Auth, configuration, safety, cancellation, malformed
+output, and validation failures receive no second call.
+
+Ephemeral usage telemetry is non-persistent and emits one sanitized event for each actual provider attempt. It records the attempt number, `attemptKind` (`initial`, `retry`, `fallback`), actual model, latency, and sanitized outcome; it contains no game summary, prompt, credential, raw payload, stack trace, or raw error. Invalid local input emits no provider-attempt event.
 
 ## Prompt and provider boundary
 
@@ -63,6 +71,10 @@ selection are backend configuration.
 
 - Provider: Google Gemini
 - Model: `gemini-2.5-flash-lite`
+
+Fallback model: `gemini-3.5-flash-lite` (separate capability check `PASSED` /
+`providerCallCount: 1` / `adviceValid: true`; no retry). This was not a retry
+of the primary live verification.
 
 The AI Coach consumes only six validated completed-game summary fields and
 returns a short structured three-field response. A lightweight Flash-Lite
@@ -83,18 +95,22 @@ larger model for lower expected cost and latency.
 | Invalid advice category | HTTP 503; no provider content rendered | `server/integration.test.ts` |
 | Transient then success | Success with 2 provider calls | `server/integration.test.ts` |
 | Transient twice | 2 provider calls, then HTTP 503 | `server/integration.test.ts` |
+| Network/408/429 retry selection | Second and final call remains on primary; total 2 | `server/ai/advice-service.test.ts`, `server/ai/gemini-provider.test.ts` |
+| 500/502/503 unavailable selection | Second and final call uses fixed Gemini fallback; total 2 | `server/ai/advice-service.test.ts`, `server/integration.test.ts`, `server/ai/gemini-provider.test.ts` |
+| Invalid fallback output | Same runtime validator rejects extra field/category; total 2 then 503 | `server/ai/advice-service.test.ts` |
 | Non-retryable failure | 1 provider call | `server/integration.test.ts` |
 | Concurrent coach action | One in-flight browser request | `server/integration.test.ts`, `src/ai/coach-controller.test.ts` |
 | Restart with stale success | Old success ignored | `server/integration.test.ts`, `src/ai/coach-controller.test.ts` |
 | Restart with stale failure | Old failure ignored | `server/integration.test.ts`, `src/ai/coach-controller.test.ts` |
 | Frontend provider/secret boundary | Built frontend scan passed | `scripts/check-frontend-boundary.mjs`, `src/ai/frontend-boundary.test.ts` |
 | One permitted live Gemini verification | `FAILED`; `providerCallCount: 1`; `adviceValid: false`; no retry | `scripts/verify-gemini.ts`; observed T144 result |
+| Candidate fallback capability check | `gemini-3.5-flash-lite`: `PASSED`; `providerCallCount: 1`; `adviceValid: true`; no retry | `scripts/verify-gemini-fallback-capability.ts` |
 
 ## Offline verification
 
 Phase 13 observed results:
 
-- `npm test`: 21/21 files and 206/206 tests passed.
+- `npm test`: 22/22 files and 249/249 tests passed.
 - `npm run smoke`: 6/6 checks passed.
 - `npm run typecheck`: passed.
 - `npm run build`: passed (Vite frontend output in `dist/`; server output in
@@ -107,7 +123,7 @@ Phase 13 observed results:
 - `git diff --check`: passed.
 
 No T138 fix was required. Phase 12 cross-boundary coverage is represented by
-the matrix and `server/integration.test.ts` (11 tests).
+the matrix and `server/integration.test.ts` (12 tests).
 
 ## Live Gemini verification
 
@@ -125,7 +141,7 @@ Retry: no retry performed.
 
 The one permitted live verification did not produce a validated successful
 result. The sanitized script intentionally does not expose enough raw provider
-detail to determine a root cause from this evidence alone. It was not rerun.
+detail to determine a root cause from this evidence alone. It was not rerun. No new live/provider verification call occurred during the fallback implementation or this final audit.
 
 ## Secret and frontend bundle boundary
 
@@ -152,7 +168,7 @@ evaluation, and smoke checks all passed as recorded above.
 | FR-005–FR-010: exact request structure, semantic validation, zero-call rejection | `server/ai/validation.ts`, `server/app.ts`, validation/app/integration tests | Covered |
 | FR-011–FR-012: provider abstraction and two approved implementations | `server/ai/provider.ts`, fake provider, Gemini adapter, provider tests | Covered |
 | FR-013–FR-016: exact untrusted output validation and no malformed display | `validateAiAdvice`, advice service, integration tests | Covered |
-| FR-017–FR-020: shared deadline, bounded transient retry, safe failure/no leakage | `server/ai/advice-service.ts`, app/service/integration tests | Covered |
+| FR-017–FR-020: shared deadline, bounded retry-vs-fallback selection, safe failure/no leakage | `server/ai/advice-service.ts`, app/service/integration tests | Covered |
 | FR-021–FR-023: backend-only configuration and environment example | `server/ai/config.ts`, `server/composition.ts`, `.gitignore`, `.env.example`, frontend-boundary checks | Covered; provider is Google Gemini and the configured model is `gemini-2.5-flash-lite`. |
 | FR-024–FR-027: Week03 preservation and minimum terminal telemetry | `src/game.ts`, `src/ai/game-summary.ts`, game/summary tests, Phase 13 regression results | Covered |
 | FR-028–FR-029: ownership/restart safety and adjacent DOM without Canvas changes | `CoachController`, `src/main.ts`, controller/integration tests, smoke; `src/render.ts` unchanged | Covered |

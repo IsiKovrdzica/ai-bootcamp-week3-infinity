@@ -19,25 +19,29 @@ const defaultTiming: AdviceTiming = {
   clearTimeout,
 }
 export type AdviceService = { requestAdvice(input: unknown): Promise<AdviceServiceResult> }
+export type AdviceDiagnostics = {
+  usageSink?: import('./usage-log.js').AiUsageSink
+  provider?: 'fake' | 'gemini'
+  model?: string
+  fallbackModel?: string
+}
 const DEADLINE_MS = 15_000
 const RETRY_DELAY_MS = 250
 
-export function createAdviceService(provider: AiAdviceProvider, timing: AdviceTiming = defaultTiming, diagnostics: { usageSink?: import('./usage-log.js').AiUsageSink; provider?: 'fake' | 'gemini'; model?: string } = {}): AdviceService {
+export function createAdviceService(
+  provider: AiAdviceProvider,
+  timing: AdviceTiming = defaultTiming,
+  diagnostics: AdviceDiagnostics = {},
+  fallbackProvider?: AiAdviceProvider,
+): AdviceService {
   const sink = diagnostics.usageSink ?? (() => {})
-  const emit = (outcome: 'success' | 'failure' | 'timeout', attemptCount: 0 | 1 | 2, started: number) => sink({ provider: diagnostics.provider ?? 'fake', model: diagnostics.model ?? 'fake', timestamp: new Date(started).toISOString(), latencyMs: Math.max(0, timing.now() - started), outcome, attemptCount })
   return { async requestAdvice(input) {
-    const started = timing.now()
-    let emitted = false
-    const finish = (outcome: 'success' | 'failure' | 'timeout', attemptCount: 0 | 1 | 2, result: AdviceServiceResult) => {
-      if (!emitted) {
-        emitted = true
-        emit(outcome, attemptCount, started)
-      }
-      return result
-    }
     const validated = validateGameSummary(input)
-    if (!validated.ok) return finish('failure', 0, { ok: false, kind: 'invalid_summary' })
-    let attemptCount: 0 | 1 | 2 = 0
+    if (!validated.ok) return { ok: false, kind: 'invalid_summary' }
+
+    let selectedProvider = provider
+    let selectedAttemptKind: import('./usage-log.js').AiUsageEvent['attemptKind'] = 'initial'
+    let selectedModel = diagnostics.model ?? 'fake'
     const controller = new AbortController()
     const deadline = timing.now() + DEADLINE_MS
     let expired = false
@@ -45,30 +49,67 @@ export function createAdviceService(provider: AiAdviceProvider, timing: AdviceTi
     const deadlineResult = Symbol('deadline')
     const deadlinePromise = new Promise<typeof deadlineResult>((resolve) => { expire = () => resolve(deadlineResult) })
     const timer = timing.setTimeout(() => { expired = true; controller.abort(); expire?.() }, DEADLINE_MS)
+    const emitAttempt = (
+      outcome: import('./usage-log.js').AiUsageEvent['outcome'],
+      attemptCount: 1 | 2,
+      started: number,
+    ) => sink({
+      provider: diagnostics.provider ?? 'fake',
+      model: selectedModel,
+      timestamp: new Date(started).toISOString(),
+      latencyMs: Math.max(0, timing.now() - started),
+      outcome,
+      attemptCount,
+      attemptKind: selectedAttemptKind,
+    })
+
     try {
-      for (let attempt = 1; attempt <= 2; attempt += 1) {
-        if (expired || timing.now() >= deadline) return finish('timeout', attemptCount, { ok: false, kind: 'unavailable' })
+      for (let attempt = 1 as 1 | 2; attempt <= 2; attempt = (attempt + 1) as 1 | 2) {
+        if (expired || timing.now() >= deadline) return { ok: false, kind: 'unavailable' }
+        const attemptStarted = timing.now()
         try {
-          attemptCount = attempt as 1 | 2
           const output: unknown | typeof deadlineResult = await Promise.race([
-            provider.generateAdvice(validated.value, { signal: controller.signal }),
+            selectedProvider.generateAdvice(validated.value, { signal: controller.signal }),
             deadlinePromise,
           ])
-          if (output === deadlineResult || expired) return finish('timeout', attemptCount, { ok: false, kind: 'unavailable' })
+          if (output === deadlineResult || expired) {
+            emitAttempt('timeout', attempt, attemptStarted)
+            return { ok: false, kind: 'unavailable' }
+          }
           const advice = validateAiAdvice(output)
-          if (!advice.ok) return finish('failure', attemptCount, { ok: false, kind: 'unavailable' })
+          if (!advice.ok) {
+            emitAttempt('failure', attempt, attemptStarted)
+            return { ok: false, kind: 'unavailable' }
+          }
           const { summary, recommendation, category } = advice.value
-          return finish('success', attemptCount, { ok: true, advice: { summary, recommendation, category } })
+          emitAttempt('success', attempt, attemptStarted)
+          return { ok: true, advice: { summary, recommendation, category } }
         } catch (error) {
-          if (expired || timing.now() >= deadline) return finish('timeout', attemptCount, { ok: false, kind: 'unavailable' })
-          if (!(error instanceof ProviderFailure) || error.kind !== 'transient' || attempt === 2) return finish('failure', attemptCount, { ok: false, kind: 'unavailable' })
-          if (deadline - timing.now() < RETRY_DELAY_MS) return finish('failure', attemptCount, { ok: false, kind: 'unavailable' })
+          if (expired || timing.now() >= deadline) {
+            emitAttempt('timeout', attempt, attemptStarted)
+            return { ok: false, kind: 'unavailable' }
+          }
+          emitAttempt('failure', attempt, attemptStarted)
+          const useFallback = error instanceof ProviderFailure && error.kind === 'provider_unavailable'
+          const retryPrimary = error instanceof ProviderFailure && error.kind === 'transient'
+          if ((!retryPrimary && !useFallback) || attempt === 2 || (useFallback && !fallbackProvider)) {
+            return { ok: false, kind: 'unavailable' }
+          }
+          if (deadline - timing.now() < RETRY_DELAY_MS) return { ok: false, kind: 'unavailable' }
           try { await timing.sleep(RETRY_DELAY_MS, controller.signal) } catch {
-            return finish(expired || timing.now() >= deadline ? 'timeout' : 'failure', attemptCount, { ok: false, kind: 'unavailable' })
+            return { ok: false, kind: 'unavailable' }
+          }
+          if (expired || timing.now() >= deadline) return { ok: false, kind: 'unavailable' }
+          if (useFallback && fallbackProvider) {
+            selectedProvider = fallbackProvider
+            selectedAttemptKind = 'fallback'
+            selectedModel = diagnostics.fallbackModel ?? selectedModel
+          } else {
+            selectedAttemptKind = 'retry'
           }
         }
       }
-      return finish('failure', attemptCount, { ok: false, kind: 'unavailable' })
+      return { ok: false, kind: 'unavailable' }
     } finally { timing.clearTimeout(timer) }
   } }
 }

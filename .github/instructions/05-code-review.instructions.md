@@ -17,7 +17,7 @@ applyTo: "**/*"
 8. Check dependency restraint, intentional files, and absence of secrets or generated claims.
 9. Check `docs/EVIDENCE_003.md` and `docs/AI_USAGE_LOG.md` against actual work.
 10. For Week04, check exact request and provider-output runtime validation, including zero provider calls for every invalid summary.
-11. Check the one 15-second shared deadline, at most two total attempts, transient-only retry, fake-first tests, and no real deadline sleeps.
+11. Check the one 15-second shared deadline, at most two total attempts, same-primary retry only for network/408/429, and the one fixed capability-tested Gemini fallback only for normalized 500/502/503 provider-unavailability; retain fake-first tests and no real deadline sleeps.
 12. Check browser/backend separation, backend-only credentials, sanitized diagnostics, exact 200/400/503 responses, stale-response handling, and Week03 regression evidence.
 
 ## Findings to reject

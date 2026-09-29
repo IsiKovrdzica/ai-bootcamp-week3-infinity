@@ -3,7 +3,7 @@ import { GeminiAiAdviceProvider } from '../server/ai/gemini-provider.js'
 import type { AiAdviceProvider } from '../server/ai/provider.js'
 import { validateAiAdvice, validateGameSummary } from '../server/ai/validation.js'
 
-const verificationSummary = {
+export const VERIFICATION_SUMMARY = {
   outcome: 'WON',
   score: 320,
   bricksDestroyed: 32,
@@ -24,7 +24,7 @@ export async function runGeminiVerification(
   const config = readGeminiConfig(environment)
   if (!config.ok) return { status: 'SKIPPED', providerCallCount: 0 }
 
-  const summary = validateGameSummary(verificationSummary)
+  const summary = validateGameSummary(VERIFICATION_SUMMARY)
   if (!summary.ok) return { status: 'FAILED', providerCallCount: 0, adviceValid: false }
 
   let provider: AiAdviceProvider

@@ -1,7 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { readGeminiConfig } from './config.js'
+import { GEMINI_FALLBACK_MODEL, readGeminiConfig } from './config.js'
 
 describe('backend Gemini configuration', () => {
+  it('keeps the only tested fallback model backend-only and fixed', () => {
+    expect(GEMINI_FALLBACK_MODEL).toBe('gemini-3.5-flash-lite')
+  })
   it.each([
     {},
     { GEMINI_API_KEY: ' ', GEMINI_MODEL: 'model' },

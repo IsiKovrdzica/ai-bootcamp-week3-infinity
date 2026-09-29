@@ -15,7 +15,7 @@ The backend uses Node's built-in HTTP server rather than a server framework. Rou
 | Frontend | Existing vanilla TypeScript, HTML, CSS, Canvas, and Vite |
 | Backend | Node.js TypeScript, ESM, built-in `node:http` |
 | Runtime baseline | Node 20+ documented; current development environment is Node 24 |
-| AI provider | Gemini through `@google/genai`; default example model `gemini-3.5-flash-lite`, always read from `GEMINI_MODEL` |
+| AI provider | Gemini through `@google/genai`; primary model read from `GEMINI_MODEL`; fixed capability-checked backend fallback `gemini-3.5-flash-lite` only for normalized 500/502/503 unavailability |
 | Validation | Handwritten exact-key runtime validators; no schema-validation dependency |
 | Testing | Existing Vitest; pure handler/service/controller tests with fake provider and fake timers |
 | Local routing | Vite proxy `/api` to backend on `127.0.0.1:8787`; browser uses relative `/api/ai/advice` |
@@ -27,7 +27,7 @@ The backend uses Node's built-in HTTP server rather than a server framework. Rou
 - `specs/001-brickpulse-ai-coach/spec.md` is authoritative only for Week04 AI behavior and minimum telemetry.
 - No Week03 historical specification, evidence, evaluation, or context-manifest file is rewritten.
 - No AI call enters `updateGame`, rendering, input handling, or an animation-frame path.
-- No extra endpoint, provider, model fallback, database, authentication, deployment, streaming, agent, or gameplay redesign is introduced.
+- No extra endpoint, provider, model fallback chain, database, authentication, deployment, streaming, agent, or gameplay redesign is introduced; the one approved second-slot Gemini fallback remains within two total calls.
 - The dependency additions below require explicit approval during implementation under the existing repository rules.
 
 ## Proposed repository layout
@@ -120,8 +120,8 @@ The backend does not import a TypeScript type assertion as proof. Validators ret
    }
    ```
 
-2. Define normalized provider failures with a closed classification (`transient`, `auth`, `configuration`, `safety`, `client_cancelled`, `permanent`, `programming`). Only `transient` is retryable.
-3. Implement the advice service with one outer 15,000 ms deadline, one `AbortController`, at most two calls, and one fixed 250 ms retry delay injected behind clock/sleep functions for deterministic tests.
+2. Define normalized provider failures with `transient` (same-primary retry) and `provider_unavailable` (fallback-eligible 500/502/503), plus terminal auth/configuration/safety/cancellation/permanent/programming classes.
+3. Implement one outer 15,000 ms deadline, one `AbortController`, at most two calls, and one fixed 250 ms injected delay before either permitted second call.
 4. Race the complete operation against the deadline in addition to passing the signal. Once expired, mark the operation settled, abort the signal, return failure, and ignore any late provider fulfillment.
 5. Validate provider output after each successful provider return. Invalid output is immediately non-retryable.
 6. Implement a pure HTTP handler/composition seam, then a thin `node:http` adapter:
@@ -136,7 +136,7 @@ The backend does not import a TypeScript type assertion as proof. Validators ret
 
 1. `FakeAiAdviceProvider` supports deterministic modes: valid success, permanent failure, transient failure, transient-then-success, repeated transient failure, delayed result, and malformed output. It exposes `providerCallCount` and accepts injected timing; it never uses network access.
 2. `GeminiAiAdviceProvider` alone imports `@google/genai`, reads no browser state, and is constructed only with backend-read `GEMINI_API_KEY` and `GEMINI_MODEL`.
-3. Use `gemini-3.5-flash-lite` in `.env.example` documentation/quickstart as the recommended current stable lightweight value, but keep `.env.example` itself empty as required (`GEMINI_MODEL=`).
+3. Keep the documented primary as `gemini-2.5-flash-lite` through backend `GEMINI_MODEL`; use the fixed capability-tested `gemini-3.5-flash-lite` only as the second-slot fallback. Keep `.env.example` empty as required (`GEMINI_MODEL=`).
 4. Use Gemini structured JSON output with the three-field schema as a generation constraint. Parse the returned JSON as `unknown`; the application validator remains mandatory.
 5. Explicitly configure SDK transport retries to one total SDK attempt. The advice service alone owns the optional second application attempt. Verify the installed SDK API/options in a focused adapter test or compile check because SDK retry configuration is version-sensitive.
 6. Pass the outer deadline's abort signal into the SDK. Document that client abort prevents a late application success but may not cancel already accepted provider-side work or billing.
@@ -187,7 +187,9 @@ for attempt in [1, 2]:
   if deadline expired: fail safely
   call provider once with shared abort signal
   if valid output: return validated advice only if deadline still active
-  if failure is non-transient: fail safely
+  if failure is network/408/429 transient: select primary for the second slot
+  if failure is normalized 500/502/503 unavailable: select tested Gemini fallback for the second slot
+  if failure is otherwise non-retryable: fail safely
   if attempt == 2: fail safely
   wait min(250 ms, remaining budget) with abort support
 

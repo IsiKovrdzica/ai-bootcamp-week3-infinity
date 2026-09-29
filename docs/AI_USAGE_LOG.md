@@ -15,6 +15,7 @@ value.
 | Cross-boundary integracija | Proveriti browser → `POST /api/ai/advice` → backend → fake provider → validiran browser rezultat, uključujući 400/503 putanje. | Tačni bezbedni odgovori bez Gemini mrežne zavisnosti. | Offline integration testovi su zeleni. | Osloniti se na fake provider za rutinske testove. |
 | Potpuna offline verifikacija | Potvrditi kompletnu Core granicu i Week03 regresije. | Deterministička Core verifikacija je zelena. | `npm test` 206/206, smoke 6/6, fokusirani Week03 42/42, formal 5/5, holdout 1/1, typecheck/build/frontend-boundary su prošli. | Core je bio spreman za jednu eksplicitno odobrenu live proveru. |
 | Live Gemini verifikacija | Jedna kontrolisana real-provider provera nakon offline gate-a. | Jedan provider poziv i runtime-validan `AiAdvice`. | `FAILED` / `providerCallCount: 1` / `adviceValid: false`. Retry nije izvršen. | Sačuvati stvarni rezultat; ne podešavati niti ponavljati samo radi `PASS`; ograničenje je zabeleženo u evidence. |
+| Mentor reliability pregled | Proveriti capability kandidata pre fallback ponašanja i zadržati najviše dva aplikaciona poziva. | Jedan zaseban poziv kandidatu kroz isti prompt, adapter i validator. | `gemini-3.5-flash-lite`: `PASSED` / `providerCallCount: 1` / `adviceValid: true`, bez retry-ja. | Drugi slot koristi fallback samo za normalizovane 500/502/503; mreža/408/429 ponavljaju primarni model. |
 
 ## References
 

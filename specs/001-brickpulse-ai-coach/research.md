@@ -30,18 +30,18 @@
 - Legacy `@google/generative-ai`: not the current SDK.
 - Multiple SDKs/providers: out of scope.
 
-### Recommend stable `gemini-3.5-flash-lite`, but require configuration
+### Primary `gemini-2.5-flash-lite`; fixed tested fallback `gemini-3.5-flash-lite`
 
-**Decision**: Recommend `gemini-3.5-flash-lite` in setup guidance for this short structured-output task. The application reads the actual model only from backend `GEMINI_MODEL`; no model identifier is hard-coded as product behavior.
+**Decision**: The documented primary is `gemini-2.5-flash-lite`, supplied only through backend `GEMINI_MODEL`. The one fixed backend fallback is `gemini-3.5-flash-lite`; it is not environment-configurable or browser-selectable.
 
-**Rationale**: Google's current model catalog describes it as the fastest, most cost-effective stable 3.5 model and recommends it for new lightweight workloads. This coaching task needs short text transformation and classification rather than deep reasoning. A stable model is preferable to a preview alias for reproducible evidence.
+**Rationale**: This coaching task needs short text transformation and classification rather than deep reasoning. The fallback candidate was separately capability-tested through the same BrickPulse prompt, Gemini adapter, structured-output request, and runtime `AiAdvice` validator, observing `PASSED` with exactly one provider call. This was not a retry of the primary live verification, which remains `FAILED` with one call and invalid advice.
 
 **Source**: [Google Gemini model catalog](https://ai.google.dev/gemini-api/docs/models)
 
 **Rejected alternatives**:
 
 - `gemini-3.8-flash`: capable but larger than this bounded task requires.
-- 2.5-family models: still available to some users, but Google's catalog recommends newer models for new projects.
+- Replacing the documented `gemini-2.5-flash-lite` primary without a new approved verification record: would misstate the observed primary evidence.
 - Preview/latest aliases: less stable for reproducible coursework evidence.
 
 ### Use provider structured output as a generation constraint only
@@ -67,6 +67,22 @@
 **Sources**: [SDK HTTP options](https://googleapis.github.io/js-genai/release_docs/interfaces/types.HttpOptions.html), [Google GenAI SDK request implementation](https://github.com/googleapis/js-genai/blob/main/src/_api_client.ts)
 
 **Gate**: Verify the exact option syntax against the pinned SDK version during implementation. If a single SDK attempt cannot be configured and evidenced, use direct backend `fetch` for the Gemini adapter rather than accept hidden retries.
+
+### Mentor addendum: bounded second-slot model selection
+
+**Decision**: Retain at most two application provider calls. Network/connection,
+408, and 429 use the second slot for the configured primary model; normalized
+500, 502, and 503 provider-unavailable failures use the same second slot for
+the capability-checked `gemini-3.5-flash-lite` Gemini model.
+
+**Evidence**: The candidate completed one separate sanitized capability check
+through the same prompt, SDK adapter, structured-output settings, and runtime
+validator: `PASSED` / `providerCallCount: 1` / `adviceValid: true`. This was
+not a retry of the primary live check, which remains `FAILED` /
+`providerCallCount: 1` / `adviceValid: false`.
+
+**Boundary**: No third call, model chain, additional provider, or fallback for
+auth/configuration/safety/validation failures.
 
 ### Use AbortSignal plus a local settle guard
 

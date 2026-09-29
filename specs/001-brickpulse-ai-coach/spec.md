@@ -19,6 +19,7 @@ Existing gameplay must remain unchanged except for collecting the minimum data n
 
 - **Duration**: `durationSeconds` is cumulative active simulation time processed while the game is in `RUNNING`. Time in `READY`, `WON`, and `GAME_OVER` is excluded. The counter resets only when a fresh game is created or restarted; losing a non-final life and returning to `READY` does not reset it.
 - **Timeout and retries**: One backend advice request has a 15-second total AI-operation deadline shared by all provider attempts. Core permits at most 2 total provider attempts, including the first attempt. A retry may begin only for a classified transient failure and only while time remains within the same deadline.
+- **Mentor reliability addendum**: The second and final provider call remains within the same 15-second deadline. Network/connection, 408, and 429 failures retry the configured primary model; normalized 500, 502, or 503 provider-unavailable failures use the capability-checked `gemini-3.5-flash-lite` Gemini model. No third call, authorization/safety/validation bypass, or provider change is allowed.
 - **Repeated requests**: A player may explicitly request advice again for the same completed game after the prior request settles. Only one request may be in flight at a time. Restarting invalidates pending and previously displayed coach state for the completed game; a late result from that game must be ignored.
 - **Provider-output strictness**: Provider output must have exactly the three `AiAdvice` fields. Any unexpected field causes rejection rather than stripping.
 - **Public failures**: Invalid local input returns HTTP `400` with the exact `INVALID_GAME_SUMMARY` envelope defined below. Provider failure, timeout, and invalid provider output return HTTP `503` with the exact `AI_ADVICE_UNAVAILABLE` envelope defined below.
@@ -120,13 +121,13 @@ A developer can use Gemini for a limited, explicitly configured live integration
 - **FR-009**: Request validation MUST enforce that `WON` has exactly 32 destroyed bricks and that `GAME_OVER` has exactly zero remaining lives.
 - **FR-010**: Invalid local input MUST be rejected before provider invocation, MUST NOT be retried, and MUST leave `providerCallCount` at `0` in an instrumented acceptance test.
 - **FR-011**: Application logic MUST access AI generation through a small `AiAdviceProvider` abstraction rather than through Gemini-specific calls distributed across the application.
-- **FR-012**: The implementation MUST provide a `FakeAiAdviceProvider` for automated tests and a `GeminiAiAdviceProvider` for limited live verification; additional providers and provider fallback are out of scope.
+- **FR-012**: The implementation MUST provide a `FakeAiAdviceProvider` for automated tests and `GeminiAiAdviceProvider` instances for limited live verification and the fixed, capability-checked Gemini-model fallback. Additional providers and unbounded model fallback are out of scope.
 - **FR-013**: The backend MUST runtime-validate provider output before treating it as application data. Provider output MUST contain exactly `summary`, `recommendation`, and `category`; any missing or unexpected field MUST cause rejection.
 - **FR-014**: A valid `AiAdvice` MUST be a non-null plain object with `summary`, `recommendation`, and `category`; `summary` MUST contain 1–160 characters, `recommendation` MUST contain 1–220 characters, and both MUST contain non-whitespace content.
 - **FR-015**: `category` MUST be exactly one of `survival`, `efficiency`, `consistency`, or `general`.
 - **FR-016**: Malformed provider output MUST be rejected as invalid provider output and MUST never be displayed as valid advice.
 - **FR-017**: Each backend advice request MUST apply one 15-second total deadline to the complete AI operation, including all provider attempts. On expiry, active work MUST be aborted or ignored and the request MUST end in controlled failure without blocking continued game use.
-- **FR-018**: Core MUST make at most 2 total provider attempts per backend advice request. It MAY make the second attempt only after a transient network/connection failure, provider `408`, provider `429`, provider `5xx`, or an equivalent provider error explicitly classified as transient, and only if time remains before the shared deadline. It MUST NOT retry invalid local input, provider authentication/authorization/configuration errors, other provider `4xx` responses, safety refusal, invalid provider output, client cancellation, or application validation/programming errors.
+- **FR-018**: Core MUST make at most 2 total provider attempts per backend advice request. With time remaining before the shared deadline, the second call retries the primary model only for network/connection, `408`, or `429` transient failures; normalized provider-unavailable `500`, `502`, or `503` failures use only the tested `gemini-3.5-flash-lite` Gemini fallback model. It MUST NOT make a third call or retry/fallback invalid local input, provider authentication/authorization/configuration errors, other provider `4xx` responses, safety refusal, invalid provider output, client cancellation, or application validation/programming errors.
 - **FR-019**: Provider failure, timeout, and invalid provider output MUST produce a stable safe application failure that the frontend renders as `AI advice is temporarily unavailable. Please try again later.`
 - **FR-020**: Application responses and user-visible states MUST NOT expose raw provider errors or payloads, stack traces, API keys, internal prompts, or provider internals.
 - **FR-021**: `GEMINI_API_KEY` MUST be read only by backend runtime code from environment configuration and MUST never be included in browser code or bundles, committed content, prompts, tests, fixtures, screenshots, evidence, logs, or API responses.
@@ -287,7 +288,7 @@ Existing SpecKit artifacts SHOULD carry this information when they already do so
 
 - AI in the frame-by-frame game loop or any real-time gameplay path
 - AI opponent, chatbot, or additional AI features
-- Additional providers or provider fallback
+- Additional providers, model fallback chains, or more than two total provider calls
 - Retrieval-augmented generation, vector databases, autonomous agents, or multi-agent architecture
 - Login, authentication, database, persistent history, deployment, or multiplayer
 - Streaming responses

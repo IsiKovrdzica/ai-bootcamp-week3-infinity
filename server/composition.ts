@@ -1,5 +1,5 @@
 import { createAdviceService, type AdviceService } from './ai/advice-service.js'
-import { readGeminiConfig } from './ai/config.js'
+import { GEMINI_FALLBACK_MODEL, readGeminiConfig } from './ai/config.js'
 import { GeminiAiAdviceProvider } from './ai/gemini-provider.js'
 
 const unavailableService: AdviceService = {
@@ -16,6 +16,14 @@ export function createProductionAdviceService(
   return createAdviceService(
     new GeminiAiAdviceProvider(configuration.value),
     undefined,
-    { provider: 'gemini', model: configuration.value.model },
+    {
+      provider: 'gemini',
+      model: configuration.value.model,
+      fallbackModel: GEMINI_FALLBACK_MODEL,
+    },
+    new GeminiAiAdviceProvider({
+      apiKey: configuration.value.apiKey,
+      model: GEMINI_FALLBACK_MODEL,
+    }),
   )
 }

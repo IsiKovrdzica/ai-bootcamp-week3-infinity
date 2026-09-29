@@ -55,7 +55,9 @@ describe('GeminiAiAdviceProvider', () => {
   })
 
   it.each([
-    [{ status: 408 }, 'transient'], [{ status: 429 }, 'transient'], [{ status: 503 }, 'transient'],
+    [{ status: 408 }, 'transient'], [{ status: 429 }, 'transient'],
+    [{ status: 500 }, 'provider_unavailable'], [{ status: 502 }, 'provider_unavailable'], [{ status: 503 }, 'provider_unavailable'],
+    [{ status: 501 }, 'permanent'], [{ status: 504 }, 'permanent'],
     [new TypeError('network'), 'transient'], [{ status: 401 }, 'auth'], [{ status: 403 }, 'auth'],
     [{ status: 400, message: 'safety blocked' }, 'safety'], [{ status: 404, message: 'unsupported model' }, 'configuration'],
     [{ status: 400 }, 'permanent'], [{ status: 404 }, 'permanent'],

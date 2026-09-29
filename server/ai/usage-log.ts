@@ -4,7 +4,8 @@ export type AiUsageEvent = {
   timestamp: string
   latencyMs: number
   outcome: 'success' | 'failure' | 'timeout'
-  attemptCount: 0 | 1 | 2
+  attemptCount: 1 | 2
+  attemptKind: 'initial' | 'retry' | 'fallback'
   tokenUsage?: { input?: number; output?: number }
 }
 export type AiUsageSink = (event: AiUsageEvent) => void

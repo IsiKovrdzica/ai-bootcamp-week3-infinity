@@ -3,7 +3,7 @@ import { createApp, type AppHandler } from './app.js'
 import { createAdviceService, type AdviceTiming } from './ai/advice-service.js'
 import { FakeAiAdviceProvider } from './ai/fake-provider.js'
 import { validWonSummary } from './ai/game-summary-fixtures.js'
-import type { AiAdviceProvider } from './ai/provider.js'
+import { ProviderFailure, type AiAdviceProvider } from './ai/provider.js'
 import { createAdviceTransport, type AdviceTransportResult, type BrowserFetch } from '../src/ai/api-client.js'
 import { CoachController, type CoachState } from '../src/ai/coach-controller.js'
 import type { AiAdvice } from '../src/ai/contracts.js'
@@ -61,6 +61,25 @@ describe('offline browser/backend AI coach integration', () => {
     expect(throughBrowser.states.at(-1)).toEqual({ kind: 'failure' })
   })
 
+  it('uses the tested fallback as the second and final call after provider unavailability', async () => {
+    const primary = {
+      providerCallCount: 0,
+      async generateAdvice() {
+        this.providerCallCount += 1
+        throw new ProviderFailure('provider_unavailable')
+      },
+    }
+    const fallback = new FakeAiAdviceProvider({ mode: 'success', advice })
+    const app = createApp(createAdviceService(primary, immediateTiming(), {}, fallback))
+    const throughBrowser = await requestThroughController(app)
+
+    expect(primary.providerCallCount).toBe(1)
+    expect(fallback.providerCallCount).toBe(1)
+    expect(primary.providerCallCount + fallback.providerCallCount).toBe(2)
+    expect(throughBrowser.responses).toEqual([{ status: 200, body: JSON.stringify(advice) }])
+    expect(throughBrowser.states.at(-1)).toEqual({ kind: 'success', advice })
+  })
+
   it('returns 503 at the shared 15-second deadline and ignores a late provider success', async () => {
     vi.useFakeTimers()
     try {
@@ -80,7 +99,7 @@ describe('offline browser/backend AI coach integration', () => {
       controller.showTerminal(validWonSummary)
       controller.requestAdvice()
       await vi.advanceTimersByTimeAsync(15_000)
-      await settle()
+      await vi.runAllTimersAsync()
       expect(provider.calls).toBe(1)
       expect(responses).toEqual([{
         status: 503,
@@ -88,7 +107,7 @@ describe('offline browser/backend AI coach integration', () => {
       }])
       expect(controller.state).toEqual({ kind: 'failure' })
       resolveLate?.(advice)
-      await settle()
+      await waitForSettledState(states)
       expect(controller.state).toEqual({ kind: 'failure' })
       expect(states.at(-1)).toEqual({ kind: 'failure' })
     } finally {
@@ -146,7 +165,7 @@ describe('offline browser/backend AI coach integration', () => {
     controller.restart()
     expect(signal?.aborted).toBe(true)
     pending.resolve(outcome === 'success' ? { ok: true, advice } : { ok: false })
-    await settle()
+    await waitForSettledState(states)
     expect(controller.state).toEqual({ kind: 'hidden' })
     expect(states.at(-1)).toEqual({ kind: 'hidden' })
   })
@@ -166,7 +185,7 @@ async function requestThroughController(app: AppHandler, summary = validWonSumma
   })
   controller.showTerminal(summary)
   controller.requestAdvice()
-  await settle()
+  await waitForSettledState(states)
   return { states, requests, responses }
 }
 
@@ -195,6 +214,11 @@ function deferred<T>() {
   return { promise, resolve }
 }
 
-async function settle(): Promise<void> {
-  for (let index = 0; index < 10; index += 1) await Promise.resolve()
+async function waitForSettledState(states: readonly CoachState[]): Promise<void> {
+  for (let turn = 0; turn < 100; turn += 1) {
+    const kind = states.at(-1)?.kind
+    if (kind === 'success' || kind === 'failure' || kind === 'hidden') return
+    await new Promise<void>((resolve) => setImmediate(resolve))
+  }
+  throw new Error(`Coach controller did not settle after 100 event-loop turns; last state: ${states.at(-1)?.kind ?? 'none'}`)
 }

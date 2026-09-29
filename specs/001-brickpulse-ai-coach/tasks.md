@@ -333,8 +333,16 @@ The SDK compatibility research task may start earlier, but no live adapter or ca
 - [x] T163 Inspect `git status`, `git diff --stat`, and the complete diff; confirm every changed file belongs to the approved feature and no Week03 historical artifact was rewritten.
 - [x] T164 Re-run the complete verification sequence from Phase 13 after final documentation/configuration changes; record final results rather than reusing earlier output.
 - [x] T165 Compare the implementation against every Week04 MUST/FR/SC item and A1–A7 in `spec.md`; list any unmet item as a blocker rather than calling Core complete.
-- [x] T166 Confirm no Stretch item, second endpoint/provider/model fallback, database, authentication, deployment, streaming, agent, dashboard, or game-physics redesign was added.
+- [x] T166 Confirm no Stretch item, second endpoint/provider, arbitrary model fallback chain, database, authentication, deployment, streaming, agent, dashboard, or game-physics redesign was added; the approved fixed second-slot Gemini fallback is covered by M001–M004.
 - [x] T167 Stop after Core completion and hand off the final behavior, files, commands/results, live status, risks, and limitations; do not begin Stretch work automatically.
+
+## Mentor reliability addendum — bounded tested-model fallback
+
+- [x] M001 Capability-check `gemini-3.5-flash-lite` through the existing prompt, adapter, structured-output, and runtime-validation path before use; observed `PASSED` / `providerCallCount: 1` / `adviceValid: true` with no retry.
+- [x] M002 Preserve one 15,000 ms deadline and at most two total application provider calls; select the second slot as primary retry for network/408/429 or fixed Gemini fallback for normalized 500/502/503 unavailability.
+- [x] M003 Keep auth, configuration, safety, cancellation, malformed output, invalid local input, and application validation failures terminal; add deterministic call-count and late-result tests.
+- [x] M004 Keep SDK attempts at 1 per provider method call, public HTTP envelopes unchanged, browser/provider boundary unchanged, and no fallback chain or additional provider.
+- [x] M005 Keep telemetry ephemeral and non-persistent; record one sanitized event per actual provider attempt with its kind and actual model, without payload or error data; invalid local input records no provider-attempt event.
 
 ## Parallel execution guidance
 

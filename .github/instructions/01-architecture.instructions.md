@@ -26,7 +26,8 @@ Keep these responsibilities separable when the scaffold is created. Exact file p
 - The TypeScript backend owns request validation, the single advice endpoint, the shared deadline, retry policy, provider output validation, and safe response projection.
 - AI generation is accessed only through AiAdviceProvider; routine tests use the fake provider. The Gemini adapter is backend-only and optional live verification remains separate.
 - AI work must not run in updateGame, rendering, input handling, or an animation-frame path. Canvas rendering remains free of HTTP and provider behavior.
-- No second endpoint/provider, database, authentication, deployment, streaming, agent, dashboard, model fallback, or gameplay redesign is authorized.
+- The backend may use the configured Gemini primary model and exactly one fixed, capability-tested Gemini fallback model only for the Week04 specification's normalized provider-unavailable classes. Both calls share the same deadline and remain within the two-total-call limit.
+- No arbitrary model chain, second AI provider, browser-selected model, fallback for auth/safety/validation failures, second endpoint, database, authentication, deployment, streaming, agent, dashboard, or gameplay redesign is authorized.
 
 ## Change rules
 

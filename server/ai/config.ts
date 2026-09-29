@@ -1,5 +1,7 @@
 import { ProviderFailure } from './provider.js'
 
+export const GEMINI_FALLBACK_MODEL = 'gemini-3.5-flash-lite'
+
 export type GeminiConfig = {
   apiKey: string
   model: string

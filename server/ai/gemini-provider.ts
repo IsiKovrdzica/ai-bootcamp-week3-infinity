@@ -86,7 +86,9 @@ export function classifyGeminiFailure(
     : typeof candidate?.code === 'number'
       ? candidate.code
       : undefined
-  if (status === 408 || status === 429 || (status !== undefined && status >= 500 && status <= 599)) return 'transient'
+  if (status === 408 || status === 429) return 'transient'
+  if (status === 500 || status === 502 || status === 503) return 'provider_unavailable'
+  if (status !== undefined && status >= 500 && status <= 599) return 'permanent'
   if (status === 401 || status === 403) return 'auth'
   const message = typeof candidate?.message === 'string' ? candidate.message.toLowerCase() : ''
   if (status !== undefined && (message.includes('safety') || message.includes('blocked'))) return 'safety'

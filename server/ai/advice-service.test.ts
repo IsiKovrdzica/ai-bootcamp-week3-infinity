@@ -1,7 +1,8 @@
 import { describe, expect, it, vi } from 'vitest'
 import type { AdviceTiming } from './advice-service.js'
-import { ProviderFailure } from './provider.js'
+import { ProviderFailure, type ProviderFailureKind } from './provider.js'
 import { FakeAiAdviceProvider } from './fake-provider.js'
+import { classifyGeminiFailure } from './gemini-provider.js'
 import {
   invalidGameSummaryFixtures,
   validWonSummary,
@@ -189,6 +190,178 @@ describe('advice service shared deadline and retry', () => {
   })
 })
 
+describe('advice service bounded retry-versus-fallback selection', () => {
+  const advice = {
+    summary: 'Reviewed.',
+    recommendation: 'Track the return.',
+    category: 'general' as const,
+  }
+
+  it('uses only primary for an initial success', async () => {
+    const primary = new FakeAiAdviceProvider({ mode: 'success', advice })
+    const fallback = new FakeAiAdviceProvider({ mode: 'success', advice })
+    const service = createAdviceService(primary, immediateTiming(), {}, fallback)
+
+    await expect(service.requestAdvice(validWonSummary)).resolves.toEqual({ ok: true, advice })
+    expect(primary.providerCallCount).toBe(1)
+    expect(fallback.providerCallCount).toBe(0)
+    expect(primary.providerCallCount + fallback.providerCallCount).toBeLessThanOrEqual(2)
+  })
+
+  it.each(['network', '408', '429'] as const)('retries the primary after %s-class transient failure', async () => {
+    const primary = new FakeAiAdviceProvider({ mode: 'transientThenSuccess', advice })
+    const fallback = new FakeAiAdviceProvider({ mode: 'success', advice })
+    const service = createAdviceService(primary, immediateTiming(), {}, fallback)
+
+    await expect(service.requestAdvice(validWonSummary)).resolves.toEqual({ ok: true, advice })
+    expect(primary.providerCallCount).toBe(2)
+    expect(fallback.providerCallCount).toBe(0)
+    expect(primary.providerCallCount + fallback.providerCallCount).toBe(2)
+  })
+
+  it.each(['500', '502', '503'] as const)('uses fallback after %s-class provider-unavailable failure', async () => {
+    const primary = failingProvider('provider_unavailable')
+    const fallback = new FakeAiAdviceProvider({ mode: 'success', advice })
+    const service = createAdviceService(primary, immediateTiming(), {}, fallback)
+
+    await expect(service.requestAdvice(validWonSummary)).resolves.toEqual({ ok: true, advice })
+    expect(primary.providerCallCount).toBe(1)
+    expect(fallback.providerCallCount).toBe(1)
+    expect(primary.providerCallCount + fallback.providerCallCount).toBe(2)
+  })
+
+  it('returns unavailable after fallback fails and never exceeds two calls', async () => {
+    const primary = failingProvider('provider_unavailable')
+    const fallback = failingProvider('provider_unavailable')
+    const service = createAdviceService(primary, immediateTiming(), {}, fallback)
+
+    await expect(service.requestAdvice(validWonSummary)).resolves.toEqual({ ok: false, kind: 'unavailable' })
+    expect(primary.providerCallCount).toBe(1)
+    expect(fallback.providerCallCount).toBe(1)
+    expect(primary.providerCallCount + fallback.providerCallCount).toBe(2)
+  })
+
+  it.each([
+    { ...advice, extra: true },
+    { summary: 'valid', recommendation: 'valid', category: 'invalid' },
+  ])('applies the same validator to fallback output %#', async (malformedOutput) => {
+    const primary = failingProvider('provider_unavailable')
+    const fallback = new FakeAiAdviceProvider({ mode: 'malformed', malformedOutput })
+    const service = createAdviceService(primary, immediateTiming(), {}, fallback)
+
+    await expect(service.requestAdvice(validWonSummary)).resolves.toEqual({ ok: false, kind: 'unavailable' })
+    expect(primary.providerCallCount).toBe(1)
+    expect(fallback.providerCallCount).toBe(1)
+    expect(primary.providerCallCount + fallback.providerCallCount).toBe(2)
+  })
+
+  it('does not start a retry or fallback when fewer than 250 ms remain', async () => {
+    let now = 0
+    const primary = {
+      providerCallCount: 0,
+      async generateAdvice() {
+        this.providerCallCount += 1
+        now = 14_900
+        throw new ProviderFailure('provider_unavailable')
+      },
+    }
+    const fallback = new FakeAiAdviceProvider({ mode: 'success', advice })
+    const service = createAdviceService(primary, { now: () => now, sleep: async () => {}, setTimeout, clearTimeout }, {}, fallback)
+
+    await expect(service.requestAdvice(validWonSummary)).resolves.toEqual({ ok: false, kind: 'unavailable' })
+    expect(primary.providerCallCount).toBe(1)
+    expect(fallback.providerCallCount).toBe(0)
+  })
+
+  it('ignores a late fallback result after the shared deadline', async () => {
+    vi.useFakeTimers()
+    try {
+      let resolveLate: ((value: unknown) => void) | undefined
+      const primary = failingProvider('provider_unavailable')
+      const fallback = {
+        providerCallCount: 0,
+        generateAdvice() {
+          this.providerCallCount += 1
+          return new Promise<unknown>((resolve) => { resolveLate = resolve })
+        },
+      }
+      const timing: AdviceTiming = {
+        now: () => Date.now(),
+        sleep: async () => {},
+        setTimeout: globalThis.setTimeout,
+        clearTimeout: globalThis.clearTimeout,
+      }
+      const pending = createAdviceService(primary, timing, {}, fallback).requestAdvice(validWonSummary)
+      await vi.advanceTimersByTimeAsync(15_000)
+      await expect(pending).resolves.toEqual({ ok: false, kind: 'unavailable' })
+      expect(primary.providerCallCount).toBe(1)
+      expect(fallback.providerCallCount).toBe(1)
+      resolveLate?.(advice)
+      await expect(pending).resolves.toEqual({ ok: false, kind: 'unavailable' })
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it.each(['auth', 'configuration', 'safety', 'client_cancelled', 'permanent', 'programming'] as const)(
+    'does not retry or fallback %s failures',
+    async (kind) => {
+      const primary = failingProvider(kind)
+      const fallback = new FakeAiAdviceProvider({ mode: 'success', advice })
+      const service = createAdviceService(primary, immediateTiming(), {}, fallback)
+
+      await expect(service.requestAdvice(validWonSummary)).resolves.toEqual({ ok: false, kind: 'unavailable' })
+      expect(primary.providerCallCount).toBe(1)
+      expect(fallback.providerCallCount).toBe(0)
+      expect(primary.providerCallCount + fallback.providerCallCount).toBe(1)
+    },
+  )
+
+  it('does not fallback invalid provider output or invalid local input', async () => {
+    const malformed = new FakeAiAdviceProvider({ mode: 'malformed', malformedOutput: { ...advice, extra: true } })
+    const fallback = new FakeAiAdviceProvider({ mode: 'success', advice })
+    const service = createAdviceService(malformed, immediateTiming(), {}, fallback)
+    await expect(service.requestAdvice(validWonSummary)).resolves.toEqual({ ok: false, kind: 'unavailable' })
+    expect(malformed.providerCallCount).toBe(1)
+    expect(fallback.providerCallCount).toBe(0)
+
+    await expect(service.requestAdvice({ ...validWonSummary, score: 310 })).resolves.toEqual({ ok: false, kind: 'invalid_summary' })
+    expect(malformed.providerCallCount + fallback.providerCallCount).toBe(1)
+  })
+})
+
+
+describe('advice service concrete Gemini failure mapping', () => {
+  const advice = { summary: 'Reviewed.', recommendation: 'Track the return.', category: 'general' as const }
+
+  it.each([
+    ['network', new TypeError('connection reset'), 'transient', 2, 0],
+    ['408', { status: 408 }, 'transient', 2, 0],
+    ['429', { status: 429 }, 'transient', 2, 0],
+    ['500', { status: 500 }, 'provider_unavailable', 1, 1],
+    ['502', { status: 502 }, 'provider_unavailable', 1, 1],
+    ['503', { status: 503 }, 'provider_unavailable', 1, 1],
+    ['400', { status: 400 }, 'permanent', 1, 0],
+    ['401', { status: 401 }, 'auth', 1, 0],
+    ['403', { status: 403 }, 'auth', 1, 0],
+    ['safety', { status: 400, message: 'safety blocked' }, 'safety', 1, 0],
+    ['configuration', { status: 404, message: 'unsupported model' }, 'configuration', 1, 0],
+    ['cancellation', new DOMException('aborted', 'AbortError'), 'client_cancelled', 1, 0],
+    ['programming', { message: 'unexpected' }, 'programming', 1, 0],
+  ] as const)('%s maps to %s and keeps total calls bounded', async (_label, error, kind, expectedPrimaryCalls, expectedFallbackCalls) => {
+    const primary = failingProvider(classifyGeminiFailure(error, new AbortController().signal))
+    const fallback = new FakeAiAdviceProvider({ mode: 'success', advice })
+    const service = createAdviceService(primary, immediateTiming(), {}, fallback)
+
+    await service.requestAdvice(validWonSummary)
+
+    expect(classifyGeminiFailure(error, new AbortController().signal)).toBe(kind)
+    expect(primary.providerCallCount).toBe(expectedPrimaryCalls)
+    expect(fallback.providerCallCount).toBe(expectedFallbackCalls)
+    expect(primary.providerCallCount + fallback.providerCallCount).toBeLessThanOrEqual(2)
+  })
+})
+
 function immediateTiming(initialNow = 0, sleeps: number[] = []): AdviceTiming {
   let now = initialNow
   return {
@@ -196,5 +369,15 @@ function immediateTiming(initialNow = 0, sleeps: number[] = []): AdviceTiming {
     sleep: async (milliseconds) => { sleeps.push(milliseconds); now += milliseconds },
     setTimeout,
     clearTimeout,
+  }
+}
+
+function failingProvider(kind: ProviderFailureKind) {
+  return {
+    providerCallCount: 0,
+    async generateAdvice() {
+      this.providerCallCount += 1
+      throw new ProviderFailure(kind)
+    },
   }
 }

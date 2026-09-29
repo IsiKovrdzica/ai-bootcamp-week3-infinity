@@ -92,7 +92,7 @@ Ephemeral sanitized diagnostic event only:
 | `timestamp` | ISO string | backend-generated |
 | `latencyMs` | non-negative number | whole request operation |
 | `outcome` | `success | failure | timeout` | sanitized |
-| `attemptCount` | `0 | 1 | 2` | invalid local input remains 0 |
+| `attemptCount` | `1 | 2` | one event is emitted only for an actual provider attempt; invalid local input emits no event |
 | `tokenUsage` | optional numeric summary | only when safely exposed by SDK; no payload |
 
 No database or history entity is created. Default logging is one sanitized structured line/event sink suitable for test injection.

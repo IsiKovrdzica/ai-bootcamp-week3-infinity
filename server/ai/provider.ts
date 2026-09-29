@@ -2,6 +2,7 @@ import type { GameSummary } from './contracts.js'
 
 export type ProviderFailureKind =
   | 'transient'
+  | 'provider_unavailable'
   | 'auth'
   | 'configuration'
   | 'safety'
